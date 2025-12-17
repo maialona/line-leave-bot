@@ -125,7 +125,7 @@ export async function sendApprovalNotification(data, proofUrl, timestamp, env, t
                     {
                         type: "box",
                         layout: "vertical",
-                        backgroundColor: "#ffc9c9",
+                        backgroundColor: "#fff2f2",
                         cornerRadius: "md",
                         justifyContent: "center",
                         alignItems: "center",
@@ -139,7 +139,7 @@ export async function sendApprovalNotification(data, proofUrl, timestamp, env, t
                             {
                                 type: "text",
                                 text: "駁回",
-                                color: "#fc6161ff",
+                                color: "#ba1c1c",
                                 size: "sm",
                                 align: "center"
                             }
@@ -148,7 +148,7 @@ export async function sendApprovalNotification(data, proofUrl, timestamp, env, t
                     {
                         type: "box",
                         layout: "vertical",
-                        backgroundColor: "#c3fae8",
+                        backgroundColor: "#f0fcf4",
                         cornerRadius: "md",
                         justifyContent: "center",
                         alignItems: "center",
@@ -162,7 +162,7 @@ export async function sendApprovalNotification(data, proofUrl, timestamp, env, t
                             {
                                 type: "text",
                                 text: "核准",
-                                color: "#12b886",
+                                color: "#1a8242",
                                 size: "sm",
                                 align: "center"
                             }
@@ -198,11 +198,20 @@ export async function handlePostback(event, env) {
     const data = JSON.parse(event.postback.data);
     const token = await getAccessToken(env);
 
-    const rows = await getSheetData(env.SHEET_ID, 'Leave_Records!A:K', token);
+    // Determines Sheet and Range based on Type
+    const isCase = data.type === 'case';
+    const sheetName = isCase ? 'Case_Applications' : 'Leave_Records';
+    const range = isCase ? 'Case_Applications!A:A' : 'Leave_Records!A:K';
+    
+    // Find Row
+    const rows = await getSheetData(env.SHEET_ID, range, token);
     let rowIndex = -1;
 
     for (let i = 0; i < rows.length; i++) {
-        if (rows[i][0] === data.ts && rows[i][2] === data.uid) {
+        // Case: Check Timestamp (Col 0) only? Or Timestamp + UID? Case sheet only has Applicant Name in Col C, UID is NOT in sheet.
+        // But Leave has UID in Col C (index 2).
+        // For Case, we rely on Timestamp (unique enough for now).
+        if (rows[i][0] === data.ts) {
             rowIndex = i + 1;
             break;
         }
@@ -210,7 +219,31 @@ export async function handlePostback(event, env) {
 
     if (rowIndex > -1) {
         const status = data.action === 'approve' ? 'Approved' : 'Rejected';
-        await updateSheetCell(env.SHEET_ID, `Leave_Records!K${rowIndex}`, status, token);
+        const statusCol = isCase ? 'K' : 'K'; // Both happen to be K (Col 11)
+        
+        // Update Status
+        await updateSheetCell(env.SHEET_ID, `${sheetName}!${statusCol}${rowIndex}`, status, token);
+        
+        // If Case, update Reviewer (L) and Time (M)
+        if (isCase) {
+             try {
+                // Fetch Reviewer Name from LINE
+                const profileResp = await fetch(`https://api.line.me/v2/bot/profile/${event.source.userId}`, {
+                    headers: { 'Authorization': 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN }
+                });
+                const profile = await profileResp.json();
+                const reviewerName = profile.displayName || 'Unknown';
+                const time = new Date().toISOString();
+
+                // Update L (Reviewer) and M (Time)
+                // Batch update or individual cells? updateSheetCell is single cell.
+                // We can use updateSheetCell twice.
+                await updateSheetCell(env.SHEET_ID, `${sheetName}!L${rowIndex}`, reviewerName, token);
+                await updateSheetCell(env.SHEET_ID, `${sheetName}!M${rowIndex}`, time, token);
+             } catch (e) {
+                 console.error('Failed to update reviewer info', e);
+             }
+        }
 
         await fetch('https://api.line.me/v2/bot/message/reply', {
             method: 'POST',
@@ -220,21 +253,27 @@ export async function handlePostback(event, env) {
             },
             body: JSON.stringify({
                 replyToken: event.replyToken,
-                messages: [{ type: 'text', text: `已${status === 'Approved' ? '核准' : '駁回'} ${data.name} 的申請` }]
+                messages: [{ type: 'text', text: `已${status === 'Approved' ? '核准' : '駁回'} ${data.name || '案件'} 的申請` }]
             })
         });
 
-        await fetch('https://api.line.me/v2/bot/message/push', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN
-            },
-            body: JSON.stringify({
-                to: data.uid,
-                messages: [{ type: 'text', text: `您的假單 (${data.name})-${data.date} 已${status === 'Approved' ? '核准' : '駁回'}` }]
-            })
-        });
+        if (data.uid) {
+            const msg = isCase 
+                ? `您的開案申請 (${data.caseName}) 已${status === 'Approved' ? '核准' : '駁回'}`
+                : `您的假單 (${data.name})-${data.date} 已${status === 'Approved' ? '核准' : '駁回'}`;
+
+            await fetch('https://api.line.me/v2/bot/message/push', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN
+                },
+                body: JSON.stringify({
+                    to: data.uid,
+                    messages: [{ type: 'text', text: msg }]
+                })
+            });
+        }
     }
 }
 

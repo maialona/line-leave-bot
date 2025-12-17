@@ -38,7 +38,7 @@ export async function submitCase(request, env) {
 
 export async function getCases(request, env) {
     try {
-        const { uid } = await request.json();
+        const { uid, unit: requestedUnit } = await request.json();
         const token = await getAccessToken(env);
 
         // 1. Get User Info
@@ -48,9 +48,11 @@ export async function getCases(request, env) {
         const firstSheetName = metaData.sheets[0].properties.title;
 
         const staffRows = await getSheetData(env.SHEET_ID, `${firstSheetName}!A2:F`, token);
-        const user = staffRows.find(r => r[3] === uid);
+        
+        // Find specific profile if unit provided, otherwise first match
+        const user = staffRows.find(r => r[3] === uid && (!requestedUnit || r[0] === requestedUnit));
 
-        if (!user) return { success: false, message: 'User not found' };
+        if (!user) return { success: false, message: 'User not found or unit mismatch' };
 
         const role = user[2];
         const unit = user[0];

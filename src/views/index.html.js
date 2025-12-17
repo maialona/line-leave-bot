@@ -755,7 +755,10 @@ export const indexHtml = `<!DOCTYPE html>
                         const res = await fetch(API_BASE + '/api/get-cases', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json' },
-                            body: JSON.stringify({ uid: user.value.uid })
+                            body: JSON.stringify({ 
+                                uid: user.value.uid,
+                                unit: user.value.unit
+                            })
                         });
                         const data = await res.json();
                         if (data.success) {
