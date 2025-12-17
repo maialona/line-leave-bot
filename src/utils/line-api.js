@@ -23,6 +23,53 @@ export async function sendApprovalNotification(data, proofUrl, timestamp, env, t
     if (supervisors.length === 0) return;
 
     // Build Body Contents
+    // Build Detail Contents
+    const detailContents = [
+        {
+            type: "box",
+            layout: "baseline",
+            spacing: "sm",
+            contents: [
+                { type: "text", text: "假別", color: "#9CA3AF", size: "xs", flex: 2 },
+                { type: "text", text: data.leaveType, wrap: true, color: "#4B5563", size: "sm", flex: 5, weight: "bold" }
+            ]
+        },
+        {
+            type: "box",
+            layout: "baseline",
+            spacing: "sm",
+            contents: [
+                { type: "text", text: "日期", color: "#9CA3AF", size: "xs", flex: 2 },
+                { type: "text", text: data.date, wrap: true, color: "#4B5563", size: "sm", flex: 5 }
+            ]
+        },
+        {
+            type: "box",
+            layout: "baseline",
+            spacing: "sm",
+            contents: [
+                { type: "text", text: "事由", color: "#9CA3AF", size: "xs", flex: 2 },
+                { type: "text", text: data.reason, wrap: true, color: "#374151", size: "sm", flex: 5 }
+            ]
+        }
+    ];
+
+    if (data.cases && data.cases.length > 0) {
+        data.cases.forEach(c => {
+             const subText = c.substitute ? ' (需代班)' : '';
+             detailContents.push({
+                type: "box",
+                layout: "baseline",
+                spacing: "sm",
+                contents: [
+                    { type: "text", text: "個案", color: "#DC2626", size: "xs", flex: 2 },
+                    { type: "text", text: `${c.caseName}${subText}`, wrap: true, color: "#374151", size: "sm", flex: 5 }
+                ]
+             });
+        });
+    }
+
+    // Build Body Contents
     const bodyContents = [
         {
             type: "box",
@@ -61,35 +108,7 @@ export async function sendApprovalNotification(data, proofUrl, timestamp, env, t
             backgroundColor: "#F9FAFB",
             cornerRadius: "md",
             paddingAll: "md",
-            contents: [
-                {
-                    type: "box",
-                    layout: "baseline",
-                    spacing: "sm",
-                    contents: [
-                        { type: "text", text: "假別", color: "#9CA3AF", size: "xs", flex: 2 },
-                        { type: "text", text: data.leaveType, wrap: true, color: "#4B5563", size: "sm", flex: 5, weight: "bold" }
-                    ]
-                },
-                {
-                    type: "box",
-                    layout: "baseline",
-                    spacing: "sm",
-                    contents: [
-                        { type: "text", text: "日期", color: "#9CA3AF", size: "xs", flex: 2 },
-                        { type: "text", text: data.date, wrap: true, color: "#4B5563", size: "sm", flex: 5 }
-                    ]
-                },
-                {
-                    type: "box",
-                    layout: "baseline",
-                    spacing: "sm",
-                    contents: [
-                        { type: "text", text: "事由", color: "#9CA3AF", size: "xs", flex: 2 },
-                        { type: "text", text: data.reason, wrap: true, color: "#374151", size: "sm", flex: 5 }
-                    ]
-                }
-            ]
+            contents: detailContents
         }
     ];
 

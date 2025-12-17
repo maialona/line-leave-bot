@@ -30,7 +30,8 @@ export async function submitLeave(request, env) {
         if (form.cases && form.cases.length > 0) {
             form.cases.forEach(c => {
                 const caseTimeStr = c.startTime && c.endTime ? `(${c.startTime}~${c.endTime})` : '';
-                const caseDetail = `${c.caseName} ${caseTimeStr}`;
+                const subStr = c.substitute ? ' [需代班]' : '';
+                const caseDetail = `${c.caseName} ${caseTimeStr}${subStr}`;
 
                 rowsToAdd.push([
                     timestamp, form.unit, form.uid, form.name, form.leaveType, form.date,

@@ -272,48 +272,20 @@ export const indexHtml = `<!DOCTYPE html>
 
                         <!-- Apply Type -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">申請類別 <span class="text-red-500">*</span> (可複選)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">申請類別 <span class="text-red-500">*</span></label>
                             <div class="flex space-x-6">
                                 <label class="flex items-center cursor-pointer">
-                                    <input type="checkbox" v-model="devApplyForm.applyTypes" value="開案" class="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                                    <input type="radio" v-model="devApplyForm.applyType" value="開案" class="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300">
                                     <span class="ml-2 text-gray-700">開案</span>
                                 </label>
                                 <label class="flex items-center cursor-pointer">
-                                    <input type="checkbox" v-model="devApplyForm.applyTypes" value="開發" class="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                                    <input type="radio" v-model="devApplyForm.applyType" value="開發" class="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300">
                                     <span class="ml-2 text-gray-700">開發</span>
                                 </label>
                             </div>
                         </div>
 
-                        <!-- Development Details (Conditional) -->
-                        <div v-if="devApplyForm.applyTypes.includes('開發')" class="bg-green-50 p-4 rounded-xl border border-green-100 animate-fade space-y-3">
-                             <div class="flex justify-between items-center mb-1">
-                                <label class="block text-sm font-medium text-green-800">開發項目清單 <span class="text-red-500">*</span></label>
-                                <button type="button" @click="addDevItem" class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200 transition">+ 新增項目</button>
-                             </div>
-                             
-                             <div v-if="devApplyForm.devItems.length === 0" class="text-center py-4 text-gray-400 text-xs bg-white/50 rounded-lg border border-dashed border-green-200">
-                                請點擊新增項目
-                             </div>
 
-                             <div v-for="(item, index) in devApplyForm.devItems" :key="index" class="bg-white p-3 rounded-lg border border-green-200 shadow-sm relative">
-                                <button type="button" @click="removeDevItem(index)" class="absolute top-2 right-2 text-gray-400 hover:text-red-500 z-10 p-1">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                                <div class="grid grid-cols-3 gap-2">
-                                    <div class="col-span-2">
-                                        <label class="block text-xs font-medium text-gray-500 mb-1">項目名稱</label>
-                                        <input type="text" v-model="item.name" placeholder="例如: BA01" class="w-full text-sm rounded border-gray-300 py-1.5 px-2 border focus:ring-green-500 focus:border-green-500">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-500 mb-1">組數</label>
-                                        <input type="number" v-model="item.count" placeholder="1" class="w-full text-sm rounded border-gray-300 py-1.5 px-2 border focus:ring-green-500 focus:border-green-500">
-                                    </div>
-                                </div>
-                             </div>
-                        </div>
 
                         <button type="submit" :disabled="submitting" class="w-full btn-primary text-white font-bold py-3 px-4 rounded-xl shadow-lg mt-4 disabled:opacity-50 !bg-gradient-to-r !from-green-500 !to-teal-600">
                             {{ submitting ? '送出中...' : '送出申請' }}
@@ -534,6 +506,17 @@ export const indexHtml = `<!DOCTYPE html>
                                         <span class="text-gray-400 self-center">~</span>
                                         <input type="time" v-model="item.endTime" class="text-sm w-1/2 rounded border-gray-300 py-1.5 px-2 border">
                                     </div>
+                                    <div class="flex items-center space-x-4 mt-2">
+                                        <label class="block text-sm font-medium text-gray-700">是否找代班：</label>
+                                        <label class="flex items-center cursor-pointer">
+                                            <input type="radio" :name="'sub_' + index" :value="true" v-model="item.substitute" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
+                                            <span class="ml-2 text-sm text-gray-700">是</span>
+                                        </label>
+                                        <label class="flex items-center cursor-pointer">
+                                            <input type="radio" :name="'sub_' + index" :value="false" v-model="item.substitute" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
+                                            <span class="ml-2 text-sm text-gray-700">否</span>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
 
@@ -738,7 +721,7 @@ export const indexHtml = `<!DOCTYPE html>
                     area: '',
                     caseName: '',
                     gender: '',
-                    applyTypes: [], 
+                    applyType: '', 
                     devItems: [] // Changed from devItem/devCount to array
                 });
 
@@ -795,32 +778,21 @@ export const indexHtml = `<!DOCTYPE html>
                 };
 
                 const submitDevApply = async () => {
-                    // Validation
-                    // Validation
-                    if (devApplyForm.applyTypes.length === 0) return alert('請至少選擇一種申請類別');
-                    if (devApplyForm.applyTypes.includes('開發')) {
-                        if (devApplyForm.devItems.length === 0) return alert('請至少新增一個開發項目');
-                        for (const item of devApplyForm.devItems) {
-                            if (!item.name || !item.count) return alert('請完整填寫開發項目與組數');
-                        }
-                    }
+                    if (!devApplyForm.staffId || !devApplyForm.agency || !devApplyForm.area || !devApplyForm.caseName || !devApplyForm.gender) return alert('請填寫完整（標示 * 為必填）');
+                    
+                    if (!devApplyForm.applyType) return alert('請選擇申請類別');
 
                     submitting.value = true;
                     
-                    // Format Development Items for Backend
-                    // Backend expects devItem (string) and devCount (string)
-                    // We will join them: "ItemA, ItemB" and "1, 2"
-                    const formattedDevItem = devApplyForm.devItems.map(i => i.name).join(', ');
-                    const formattedDevCount = devApplyForm.devItems.map(i => i.count).join(', ');
-
                     try {
                         const res = await fetch(API_BASE + '/api/submit-case', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 ...devApplyForm,
-                                devItem: formattedDevItem,
-                                devCount: formattedDevCount,
+                                applyTypes: devApplyForm.applyType, // Map to applyTypes for backend compatibility
+                                devItem: '',
+                                devCount: '',
                                 uid: user.value.uid,
                                 applicant: user.value.name
                             })
@@ -834,7 +806,7 @@ export const indexHtml = `<!DOCTYPE html>
                             // Reset Form
                             Object.assign(devApplyForm, {
                                 staffId: devApplyForm.staffId, 
-                                agency: '', area: '', caseName: '', gender: '', applyTypes: [], devItems: []
+                                agency: '', area: '', caseName: '', gender: '', applyType: '', devItems: []
                             });
                         } else {
                             alert(data.error || '提交失敗');
@@ -1058,17 +1030,20 @@ export const indexHtml = `<!DOCTYPE html>
                 const submitLeave = async () => {
                     if (['病假', '喪假', '婚假'].includes(leaveForm.leaveType) && !leaveForm.proofBase66) return alert('需上傳證明');
                     
+                    // Validate Cases (Required)
+                    if (leaveForm.cases.length === 0) return alert('請至少填寫一個受影響個案');
+
                     // Validate Global Time
                     if (!leaveForm.startTime || !leaveForm.endTime) return alert('請填寫完整時間');
-                    const start = new Date(\`2000-01-01T\${leaveForm.startTime}\`);
-                    const end = new Date(\`2000-01-01T\${leaveForm.endTime}\`);
+                    const start = new Date('2000-01-01T' + leaveForm.startTime);
+                    const end = new Date('2000-01-01T' + leaveForm.endTime);
                     const diff = (end - start) / (1000 * 60); // minutes
                     
                     if (diff < 0) return alert('結束時間必須晚於開始時間');
                     if (diff < 60) return alert('請假時間至少需1小時');
 
                     // Format Global Time
-                    const globalTimeSlot = \`\${leaveForm.startTime} ~ \${leaveForm.endTime}\`;
+                    const globalTimeSlot = leaveForm.startTime + ' ~ ' + leaveForm.endTime;
                     const duration = (diff / 60).toFixed(1); // Calculate Hours
 
                     submitting.value = true;
@@ -1114,7 +1089,7 @@ export const indexHtml = `<!DOCTYPE html>
                     reader.readAsDataURL(file);
                 };
 
-                const addCase = () => leaveForm.cases.push({caseName: '', startTime: '', endTime: '' });
+                const addCase = () => leaveForm.cases.push({caseName: '', startTime: '', endTime: '', substitute: false });
                 const removeCase = (i) => leaveForm.cases.splice(i, 1);
 
                 // Computed
