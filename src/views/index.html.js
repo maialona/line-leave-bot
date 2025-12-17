@@ -20,6 +20,13 @@ export const indexHtml = `<!DOCTYPE html>
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #c7c7c7; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        
+        /* Whisper Components */
+        .whisper-bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; margin-bottom: 8px; position: relative; word-wrap: break-word; }
+        .whisper-bubble.sent { background-color: #DCF8C6; align-self: flex-end; margin-left: auto; border-bottom-right-radius: 2px; }
+        .whisper-bubble.received { background-color: #FFFFFF; align-self: flex-start; margin-right: auto; border-bottom-left-radius: 2px; border: 1px solid #E5E7EB; }
+        .whisper-time { font-size: 0.7rem; color: #9CA3AF; margin-top: 4px; text-align: right; }
+        .reply-box { border-top: 1px solid #E5E7EB; padding: 10px; background: #F9FAFB; }
     </style>
 </head>
 <body class="text-gray-800 antialiased p-4 flex justify-center items-start pt-10">
@@ -50,6 +57,48 @@ export const indexHtml = `<!DOCTYPE html>
                     </button>
                     
                     <p class="text-xs text-gray-400 absolute bottom-6">v1.2.0 • Build for Efficiency</p>
+                </div>
+
+                <!-- Auth/Registration View -->
+                <div v-else-if="currentView === 'auth'" class="flex-1 flex flex-col justify-center p-6 bg-white rounded-2xl shadow-xl m-4">
+                    <div class="text-center mb-8">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">👋 歡迎加入</h2>
+                        <p class="text-gray-500">請完成以下綁定以開始使用</p>
+                    </div>
+                    
+                    <form @submit.prevent="bindUser" class="space-y-5">
+                       <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">所屬單位</label>
+                            <div class="relative">
+                                <select v-model="regForm.unit" required class="w-full rounded-xl border-gray-200 bg-gray-50 py-3 px-4 appearance-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                                    <option disabled value="">請選擇單位</option>
+                                    <option v-for="u in units" :key="u" :value="u">{{ u }}</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">真實姓名</label>
+                            <input type="text" v-model="regForm.name" required placeholder="請輸入姓名" class="w-full rounded-xl border-gray-200 bg-gray-50 py-3 px-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">員工編號</label>
+                            <input type="text" v-model="regForm.staffId" required placeholder="請輸入員編 (例: 1234)" class="w-full rounded-xl border-gray-200 bg-gray-50 py-3 px-4 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
+                        </div>
+
+                        <div class="pt-4">
+                            <button type="submit" :disabled="submitting" class="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-indigo-700 transform active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                {{ submitting ? '綁定中...' : '確認綁定' }}
+                            </button>
+                            <button type="button" @click="currentView = 'landing'" class="w-full py-3 mt-3 text-gray-400 hover:text-gray-600 text-sm font-medium transition">
+                                返回首頁
+                            </button>
+                        </div>
+                    </form>
                 </div>
                 
                 <!-- 0. Main Menu -->
@@ -92,6 +141,16 @@ export const indexHtml = `<!DOCTYPE html>
                             </div>
                             <div class="ml-auto text-gray-300 group-hover:text-green-500">→</div>
                         </div>
+
+                        <!-- Button 4: Whisper -->
+                        <div @click="currentView = 'whisper'" class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition cursor-pointer flex items-center space-x-4 group">
+                            <div class="w-12 h-12 rounded-full bg-pink-50 flex items-center justify-center text-2xl group-hover:scale-110 transition">💬</div>
+                            <div class="text-left">
+                                <h3 class="font-bold text-gray-800">悄悄話</h3>
+                                <p class="text-xs text-gray-500">匿名留言與反饋</p>
+                            </div>
+                            <div class="ml-auto text-gray-300 group-hover:text-pink-500">→</div>
+                        </div>
                     </div>
                 </div>
 
@@ -124,7 +183,7 @@ export const indexHtml = `<!DOCTYPE html>
                             <input type="text" v-model="regForm.name" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2 px-3 border" placeholder="請輸入姓名">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">員工編號 (Staff ID)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">員工編號</label>
                             <input type="text" v-model="regForm.staffId" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-2 px-3 border" placeholder="請輸入員工編號">
                         </div>
 
@@ -140,6 +199,112 @@ export const indexHtml = `<!DOCTYPE html>
                     <h3 class="text-xl font-bold text-gray-800">功能開發中</h3>
                     <p class="text-gray-500">佈告欄功能即將上線，敬請期待！</p>
                     <button @click="currentView = 'menu'" class="mt-8 text-indigo-600 font-medium hover:underline">← 返回主選單</button>
+                </div>
+
+                <!-- Whisper View -->
+                <div v-else-if="currentView === 'whisper'" class="flex-1 flex flex-col h-full overflow-hidden">
+                    <!-- Header -->
+                    <div class="mb-4 relative text-center flex-none">
+                        <button @click="whisperMode === 'list' ? currentView = 'landing' : whisperMode = 'list'" class="absolute left-0 top-1 text-gray-400 hover:text-gray-600">
+                             <span v-if="whisperMode === 'list'">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                             </span>
+                             <span v-else class="text-sm">取消</span>
+                        </button>
+                        <h1 class="text-xl font-bold text-gray-900">悄悄話</h1>
+                    </div>
+
+                    <!-- 1. List View -->
+                    <div v-if="whisperMode === 'list'" class="flex-1 flex flex-col min-h-0">
+                        <!-- Staff Action -->
+                        <div v-if="user.role !== '督導' && user.role !== '業務負責人'" class="mb-4 flex-none">
+                             <button @click="fetchWhisperRecipients(); whisperMode = 'create'" class="w-full btn-primary text-white py-3 rounded-xl shadow-md font-bold flex items-center justify-center space-x-2">
+                                <span>✏️</span><span>新增悄悄話</span>
+                             </button>
+                        </div>
+
+                        <!-- List Content -->
+                        <div class="flex-1 overflow-y-auto space-y-3 pb-20">
+                            <div v-if="whisperLoading" class="text-center py-4"><span class="animate-spin inline-block w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full"></span></div>
+                            <div v-else-if="!whisperList || whisperList.length === 0" class="text-center text-gray-400 py-10">
+                                <p>尚無訊息</p>
+                            </div>
+                            <div v-else v-for="msg in whisperList" :key="msg.id" @click="openWhisperDetail(msg)" class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer hover:bg-gray-50 relative">
+                                <div class="flex justify-between items-start mb-1">
+                                    <span class="font-bold text-gray-800 text-sm">
+                                        {{ (user.role === '督導' || user.role === '業務負責人') ? msg.senderName : ('To: ' + msg.recipientName) }}
+                                    </span>
+                                    <span class="text-xs text-gray-400">{{ msg.timestamp.split(' ')[0] }}</span>
+                                </div>
+                                <h4 class="font-medium text-gray-900 mb-1 truncate">{{ msg.subject }}</h4>
+                                <p class="text-xs text-gray-500 truncate">{{ msg.content }}</p>
+                                <div v-if="msg.status === 'Unread' && (user.role === '督導' || user.role === '業務負責人')" class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></div>
+                                <div v-if="msg.status === 'Replied'" class="absolute bottom-2 right-2 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">Eq回覆</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Create View (Staff Only) -->
+                    <div v-else-if="whisperMode === 'create'" class="flex-1 flex flex-col overflow-y-auto">
+                        <h2 class="text-lg font-bold text-gray-700 mb-4">撰寫新訊息</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">收件對象</label>
+                                <select v-model="whisperForm.recipientUid" class="w-full rounded-lg border-gray-300 py-2 px-3 border bg-white">
+                                    <option disabled value="">請選擇督導/業負</option>
+                                    <option v-for="r in whisperRecipients" :key="r.uid" :value="r.uid">{{ r.name }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">主旨</label>
+                                <input v-model="whisperForm.subject" class="w-full rounded-lg border-gray-300 py-2 px-3 border" placeholder="請輸入主旨">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">內容</label>
+                                <textarea v-model="whisperForm.content" class="w-full h-40 rounded-lg border-gray-300 py-2 px-3 border resize-none" placeholder="請輸入內容..."></textarea>
+                            </div>
+                            <button @click="submitWhisper" :disabled="submitting" class="w-full btn-primary text-white py-3 rounded-xl font-bold disabled:opacity-50">
+                                送出
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 3. Detail View -->
+                    <div v-else-if="whisperMode === 'detail' && currentWhisper" class="flex-1 flex flex-col h-full">
+                        <!-- Message Thread -->
+                        <div class="flex-1 overflow-y-auto p-2 space-y-4">
+                            <!-- Original Message -->
+                            <div>
+                                <div class="text-xs text-gray-500 mb-1 flex justify-between">
+                                    <span>{{ currentWhisper.senderName }}</span>
+                                    <span>{{ currentWhisper.timestamp }}</span>
+                                </div>
+                                <div class="whisper-bubble received shadow-sm">
+                                    <h4 class="font-bold text-indigo-700 mb-1">{{ currentWhisper.subject }}</h4>
+                                    <p class="text-sm text-gray-800 whitespace-pre-wrap">{{ currentWhisper.content }}</p>
+                                </div>
+                            </div>
+
+                            <!-- Reply if exists -->
+                            <div v-if="currentWhisper.replyContent">
+                                <div class="text-xs text-gray-500 mb-1 text-right">
+                                    <span>{{ currentWhisper.replyAuthor }}</span>
+                                    <span class="ml-2">{{ currentWhisper.replyTime }}</span>
+                                </div>
+                                <div class="whisper-bubble sent shadow-sm">
+                                    <p class="text-sm text-gray-800 whitespace-pre-wrap">{{ currentWhisper.replyContent }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Supervisor Reply Box -->
+                        <div v-if="(user.role === '督導' || user.role === '業務負責人') && !currentWhisper.replyContent" class="reply-box mt-auto">
+                            <textarea v-model="replyContent" class="w-full h-20 rounded-lg border-gray-300 py-2 px-3 border text-sm mb-2" placeholder="撰寫回覆..."></textarea>
+                            <button @click="replyWhisper" :disabled="submitting" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 disabled:opacity-50">
+                                傳送回覆
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Case/Dev Apply Form -->
@@ -664,7 +829,7 @@ export const indexHtml = `<!DOCTYPE html>
     </div>
 
     <script>
-        const { createApp, ref, onMounted, reactive, computed } = Vue;
+        const { createApp, ref, onMounted, reactive, computed, watch } = Vue;
         const API_BASE = ''; 
 
         createApp({
@@ -678,6 +843,12 @@ export const indexHtml = `<!DOCTYPE html>
                 
                 // View State
                 const currentView = ref('landing'); // landing, menu, bulletin, leave, dev_apply
+
+                watch(currentView, (newVal) => {
+                    if (newVal === 'whisper') {
+                        fetchWhispers();
+                    }
+                });
 
                 // Help Modal State
                 const showHelpModal = ref(false);
@@ -727,6 +898,129 @@ export const indexHtml = `<!DOCTYPE html>
 
                 const addDevItem = () => devApplyForm.devItems.push({ name: '', count: '' });
                 const removeDevItem = (index) => devApplyForm.devItems.splice(index, 1);
+
+                // Whisper State
+                const whisperMode = ref('list'); // 'list', 'create', 'detail'
+                const whisperList = ref([]);
+                const whisperRecipients = ref([]);
+                const whisperLoading = ref(false);
+                const whisperForm = reactive({
+                    recipientUid: '',
+                    recipientName: '',
+                    subject: '',
+                    content: ''
+                });
+                const currentWhisper = ref(null);
+                const replyContent = ref('');
+
+                const fetchWhisperRecipients = async () => {
+                    try {
+                        const res = await fetch(API_BASE + '/api/whisper/recipients', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ unit: user.value.unit })
+                        });
+                        const data = await res.json();
+                        whisperRecipients.value = data.recipients || [];
+                        if (whisperRecipients.value.length === 0) {
+                            console.warn('No recipients found for unit:', user.value.unit);
+                            // Optional: Alert if really empty? 
+                            // alert('該單位目前無督導/業務負責人資料');
+                        }
+                    } catch (e) {
+                         console.error('Fetch recipients error:', e);
+                         alert('Fetch recipients error: ' + e.message);
+                    }
+                };
+
+                const fetchWhispers = async () => {
+                    whisperLoading.value = true;
+                    try {
+                        const roleType = (user.value.role === '督導' || user.value.role === '業務負責人') ? 'supervisor' : 'staff';
+                        const res = await fetch(API_BASE + '/api/whisper/get', {
+                             method: 'POST',
+                             headers: {'Content-Type': 'application/json'},
+                             body: JSON.stringify({ uid: user.value.uid, role: roleType })
+                        });
+                        const data = await res.json();
+                        whisperList.value = data.messages || [];
+                        
+                    } catch (e) {
+                        console.error('Fetch whispers error:', e);
+                    }
+                    whisperLoading.value = false;
+                };
+
+                const submitWhisper = async () => {
+                    if (!whisperForm.recipientUid || !whisperForm.subject || !whisperForm.content) {
+                        return alert('請填寫收件人、主旨與內容');
+                    }
+                    
+                    // Find recipient name
+                    const recipient = whisperRecipients.value.find(r => r.uid === whisperForm.recipientUid);
+                    whisperForm.recipientName = recipient ? recipient.name : 'Unknown';
+
+                    submitting.value = true;
+                    try {
+                        const res = await fetch(API_BASE + '/api/whisper/submit', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                ...whisperForm,
+                                senderUid: user.value.uid,
+                                senderName: user.value.name,
+                                unit: user.value.unit
+                            })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            alert('悄悄話已送出');
+                            whisperMode.value = 'list';
+                            fetchWhispers();
+                            // Reset form
+                            Object.assign(whisperForm, { recipientUid: '', recipientName: '', subject: '', content: '' });
+                        } else {
+                            alert('送出失敗: ' + data.message);
+                        }
+                    } catch (e) { alert('此功能維護中'); console.error(e); }
+                    submitting.value = false;
+                };
+
+                const replyWhisper = async () => {
+                    if (!replyContent.value) return alert('請輸入回覆內容');
+                    
+                    submitting.value = true;
+                    try {
+                        const res = await fetch(API_BASE + '/api/whisper/reply', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                id: currentWhisper.value.id,
+                                replyContent: replyContent.value,
+                                replyAuthor: user.value.name
+                            })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            alert('已傳送回覆');
+                            currentWhisper.value.status = 'Replied';
+                            currentWhisper.value.replyContent = replyContent.value;
+                            currentWhisper.value.replyTime = new Date().toLocaleString('zh-TW');
+                            currentWhisper.value.replyAuthor = user.value.name;
+                            replyContent.value = '';
+                            // Optionally refresh
+                            fetchWhispers();
+                        } else {
+                            alert('回覆失敗: ' + data.message);
+                        }
+                    } catch (e) { alert('错误'); console.error(e); }
+                    submitting.value = false;
+                };
+
+                const openWhisperDetail = (w) => {
+                    currentWhisper.value = w;
+                    whisperMode.value = 'detail';
+                };
 
                 // Case Review State
                 const pendingCases = ref([]);
@@ -1125,18 +1419,22 @@ export const indexHtml = `<!DOCTYPE html>
                 onMounted(() => initLiff());
 
                 return {
-                    currentView, // Export currentView
+                    currentView, startApp, // Export startApp
                     allLeaves, 
                     loading, submitting, user, units, regForm, leaveForm, debugInfo,
-                    activeTab, pendingLeaves, filteredHistory, searchText,
+                    activeTab, 
+                    pendingLeaves, filteredHistory, searchText,
                     monthlyStats, maxDays, switchTab,
                     bindUser, submitLeave, handleFileUpload, addCase, removeCase, reviewLeave, cancelLeave,
                     showModal, modalMessage, closeSuccessModal,
-                    showProfileSelector, switchProfile,
+                    showHelpModal, // Added: missing export
                     showProfileSelector, switchProfile,
                     devApplyForm, submitDevApply, addDevItem, removeDevItem,
                     pendingCases, loadingCases, fetchCases, reviewCase,
-                    startApp, showHelpModal
+                    
+                    // Whisper Exports
+                    whisperMode, whisperList, whisperRecipients, whisperLoading, whisperForm, currentWhisper, replyContent,
+                    fetchWhisperRecipients, fetchWhispers, submitWhisper, replyWhisper, openWhisperDetail
                 };
             }
         }).mount('#app');

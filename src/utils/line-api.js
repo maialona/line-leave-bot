@@ -477,3 +477,98 @@ export async function sendCaseApprovalNotification(data, env, token) {
         })
     });
 }
+
+// Whisper Notifications
+export async function sendWhisperNotification(recipientUid, senderName, subject, env) {
+    const token = env.LINE_CHANNEL_ACCESS_TOKEN;
+    const liffUrl = "https://liff.line.me/2008645610-0MezRE9Z"; 
+
+    const message = {
+        type: "flex",
+        altText: "收到新的悄悄話",
+        contents: {
+            type: "bubble",
+            header: {
+                type: "box",
+                layout: "vertical",
+                contents: [{ type: "text", text: "New Whisper", weight: "bold", color: "#1DB446" }]
+            },
+            body: {
+                type: "box",
+                layout: "vertical",
+                contents: [
+                    { type: "text", text: `From: ${senderName}`, size: "sm", color: "#555555" },
+                    { type: "text", text: `Subject: ${subject}`, size: "md", weight: "bold", margin: "md", wrap: true }
+                ]
+            },
+            footer: {
+                type: "box",
+                layout: "vertical",
+                contents: [
+                    {
+                        type: "button",
+                        action: { type: "uri", label: "查看內容", uri: liffUrl },
+                        style: "primary",
+                        color: "#4F46E5"
+                    }
+                ]
+            }
+        }
+    };
+    
+    await fetch('https://api.line.me/v2/bot/message/push', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ to: recipientUid, messages: [message] })
+    });
+}
+
+export async function sendWhisperReplyNotification(originalSenderUid, replierName, subject, env) {
+    const token = env.LINE_CHANNEL_ACCESS_TOKEN;
+    const liffUrl = "https://liff.line.me/2008645610-0MezRE9Z";
+
+    const message = {
+        type: "flex",
+        altText: "您的悄悄話有新回覆",
+        contents: {
+            type: "bubble",
+            header: {
+                type: "box",
+                layout: "vertical",
+                contents: [{ type: "text", text: "New Reply", weight: "bold", color: "#1DB446" }]
+            },
+            body: {
+                type: "box",
+                layout: "vertical",
+                contents: [
+                    { type: "text", text: `Replier: ${replierName}`, size: "sm", color: "#555555" },
+                    { type: "text", text: `Subject: ${subject}`, size: "md", weight: "bold", margin: "md", wrap: true } // Subject might be long
+                ]
+            },
+            footer: {
+                type: "box",
+                layout: "vertical",
+                contents: [
+                    {
+                        type: "button",
+                        action: { type: "uri", label: "查看回覆", uri: liffUrl },
+                        style: "primary",
+                        color: "#4F46E5"
+                    }
+                ]
+            }
+        }
+    };
+    
+    await fetch('https://api.line.me/v2/bot/message/push', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ to: originalSenderUid, messages: [message] })
+    });
+}

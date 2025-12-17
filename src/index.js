@@ -3,6 +3,7 @@ import { checkUser, bindUser } from './api/user-service.js';
 import { submitLeave, getLeaves, reviewLeave, cancelLeave } from './api/leave-service.js';
 import { webhookHandler } from './api/webhook-handler.js';
 import { submitCase, getCases, reviewCase, checkPendingCaseReminders } from './api/case-service.js';
+import { whisperHandlers } from './api/whisper-service.js';
 
 export default {
     async fetch(request, env, ctx) {
@@ -40,6 +41,10 @@ export default {
                     '/api/submit-case': submitCase,
                     '/api/get-cases': getCases, // New
                     '/api/review-case': reviewCase, // New
+                    '/api/whisper/recipients': whisperHandlers.getRecipients,
+                    '/api/whisper/submit': whisperHandlers.submitWhisper,
+                    '/api/whisper/get': whisperHandlers.getWhispers,
+                    '/api/whisper/reply': whisperHandlers.replyWhisper,
                     '/webhook': webhookHandler
                 };
 
