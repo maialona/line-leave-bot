@@ -45,6 +45,10 @@ export const indexHtml = `<!DOCTYPE html>
                         開始使用
                     </button>
                     
+                    <button @click="showProfileSelector = true" class="text-gray-500 font-medium text-sm py-2 px-4 rounded-lg hover:bg-gray-100 transition duration-300">
+                        切換機構/身分
+                    </button>
+                    
                     <p class="text-xs text-gray-400 absolute bottom-6">v1.2.0 • Build for Efficiency</p>
                 </div>
                 
@@ -603,18 +607,23 @@ export const indexHtml = `<!DOCTYPE html>
                 <div class="space-y-3 max-h-80 overflow-y-auto">
                     <div v-for="(p, idx) in user.profiles" :key="idx" 
                         @click="switchProfile(p)"
-                        :class="user.unit === p.unit ? 'border-2 border-indigo-500 bg-indigo-50' : 'border border-gray-200 hover:bg-gray-50'"
+                        :class="(user.unit === p.unit && user.name === p.name && user.role === p.role) ? 'border-2 border-indigo-500 bg-indigo-50' : 'border border-gray-200 hover:bg-gray-50'"
                         class="p-4 rounded-xl cursor-pointer transition-all relative">
                         <div class="flex justify-between items-center">
                             <div>
                                 <p class="font-bold text-gray-800">{{ p.unit }}</p>
                                 <p class="text-sm text-gray-600">{{ p.name }} ({{ p.role }})</p>
                             </div>
-                            <div v-if="user.unit === p.unit" class="text-indigo-600">
+                            <div v-if="user.unit === p.unit && user.name === p.name && user.role === p.role" class="text-indigo-600">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                             </div>
                         </div>
                     </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-gray-100">
+                    <button @click="showProfileSelector = false; currentView = 'auth'" class="w-full py-3 rounded-xl border border-dashed border-gray-300 text-gray-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-gray-50 transition flex items-center justify-center font-medium">
+                        <span class="mr-2 text-lg">+</span> 綁定其他身分
+                    </button>
                 </div>
             </div>
         </div>
@@ -971,7 +980,15 @@ export const indexHtml = `<!DOCTYPE html>
                         const data = await res.json();
                         if (data.success) {
                             alert('已更新狀態');
-                            fetchLeaves(); 
+                            
+                            // Optimistic update for immediate UI reflection (Leaderboard sync)
+                            const target = allLeaves.value.find(l => l.timestamp === leave.timestamp);
+                            if (target) {
+                                target.status = action === 'approve' ? 'Approved' : 'Rejected';
+                            }
+
+                            // Fetch latest data to ensure consistency
+                            setTimeout(fetchLeaves, 800); 
                         } else {
                             alert('操作失敗: ' + data.message);
                         }
@@ -1064,6 +1081,18 @@ export const indexHtml = `<!DOCTYPE html>
                             modalMessage.value = '申請已送出';
                             showModal.value = true;
                             fetchLeaves(); // Refresh data
+
+                            // Reset Form
+                            Object.assign(leaveForm, {
+                                date: new Date().toISOString().split('T')[0],
+                                startTime: '08:00',
+                                endTime: '17:00',
+                                leaveType: '事假',
+                                reason: '',
+                                proofBase66: null,
+                                proofPreview: null,
+                                cases: []
+                            });
                         } else {
                             alert(data.error || '失敗');
                         }
