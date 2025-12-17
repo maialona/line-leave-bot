@@ -77,7 +77,7 @@ export async function getLeaves(request, env) {
 
         if (!user) throw new Error('User not found');
 
-        const isSupervisor = ['Supervisor', '督導'].includes(user[2]);
+        const isSupervisor = ['Supervisor', '督導', 'Business Manager', '業務負責人'].includes(user[2]);
         const userUnit = user[0];
 
         // 2. Check if Leave_Records exists

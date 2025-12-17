@@ -1,8 +1,8 @@
-
 import { indexHtml } from './views/index.html.js';
 import { checkUser, bindUser } from './api/user-service.js';
 import { submitLeave, getLeaves, reviewLeave, cancelLeave } from './api/leave-service.js';
 import { webhookHandler } from './api/webhook-handler.js';
+import { submitCase, getCases, reviewCase, checkPendingCaseReminders } from './api/case-service.js';
 
 export default {
     async fetch(request, env, ctx) {
@@ -37,7 +37,10 @@ export default {
                     '/api/get-leaves': getLeaves,
                     '/api/review-leave': reviewLeave,
                     '/api/cancel-leave': cancelLeave,
-                    '/webhook': webhookHandler // Special handler for LINE Webhook
+                    '/api/submit-case': submitCase,
+                    '/api/get-cases': getCases, // New
+                    '/api/review-case': reviewCase, // New
+                    '/webhook': webhookHandler
                 };
 
                 if (apiHandlers[path]) {
@@ -45,13 +48,13 @@ export default {
                         // Webhook returns Response object directly
                         return await apiHandlers[path](request, env);
                     }
-                    
+
                     try {
                         const result = await apiHandlers[path](request, env);
                         // Standard API returns JSON Object, we wrap it here
                         return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
                     } catch (e) {
-                         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+                        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
                     }
                 }
             }
@@ -61,4 +64,8 @@ export default {
             return new Response(JSON.stringify({ error: 'Global Worker Error: ' + e.message, stack: e.stack }), { status: 500, headers: { 'Content-Type': 'application/json' } });
         }
     },
+
+    async scheduled(event, env, ctx) {
+        ctx.waitUntil(checkPendingCaseReminders(env));
+    }
 };

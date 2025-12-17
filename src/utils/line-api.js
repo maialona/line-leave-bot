@@ -295,3 +295,127 @@ export async function handleMessage(event, env) {
         })
     });
 }
+
+export async function sendCaseApprovalNotification(data, env, token) {
+    // 1. Get Applicant's Unit (Recalculate or pass it? Better fetch fresh)
+    const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${env.SHEET_ID}`;
+    const metaResp = await fetch(metaUrl, { headers: { Authorization: `Bearer ${token}` } });
+    const metaData = await metaResp.json();
+    const firstSheetName = metaData.sheets[0].properties.title;
+
+    const staffRows = await getSheetData(env.SHEET_ID, `${firstSheetName}!A2:F`, token);
+    const applicant = staffRows.find(r => r[3] === data.uid);
+
+    if (!applicant) return;
+    const unit = applicant[0];
+
+    // 2. Find Supervisors & Business Managers in SAME Unit
+    // Role is at index 2. Check for 'Supervisor', '督導', 'Business Manager', '業務負責人'
+    const targetRoles = ['Supervisor', '督導', 'Business Manager', '業務負責人'];
+    const reviewers = staffRows
+        .filter(row => row[0] === unit && targetRoles.includes(row[2]) && row[3])
+        .map(row => row[3]);
+
+    if (reviewers.length === 0) return;
+
+    // 3. Build Flex Message
+    const typesStr = data.applyTypes.join(', ');
+    const devInfo = data.devItem ? `\n開發: ${data.devItem} x${data.devCount}` : '';
+
+    const flexMessage = {
+        type: "flex",
+        altText: "📋 您有一筆新的開案申請待審核",
+        contents: {
+            type: "bubble",
+            size: "mega",
+            body: {
+                type: "box",
+                layout: "vertical",
+                contents: [
+                    {
+                        type: "box",
+                        layout: "horizontal",
+                        contents: [
+                            { type: "text", text: "開案申請", weight: "bold", color: "#059669", size: "xs" },
+                            { type: "text", text: "待審核", align: "end", color: "#F59E0B", size: "xs", weight: "bold" }
+                        ]
+                    },
+                    {
+                        type: "text",
+                        text: data.applicant, // Applicant Name
+                        weight: "bold",
+                        size: "xxl",
+                        margin: "sm",
+                        color: "#1F2937"
+                    },
+                    {
+                        type: "text",
+                        text: `${unit} • ${data.area}`,
+                        size: "sm",
+                        color: "#6B7280",
+                        margin: "xs"
+                    },
+                    { type: "separator", margin: "lg", color: "#E5E7EB" },
+                    {
+                        type: "box",
+                        layout: "vertical",
+                        margin: "lg",
+                        spacing: "sm",
+                        backgroundColor: "#F0FDF4", // Green tint
+                        cornerRadius: "md",
+                        paddingAll: "md",
+                        contents: [
+                            {
+                                type: "box",
+                                layout: "baseline",
+                                spacing: "sm",
+                                contents: [
+                                    { type: "text", text: "個案", color: "#059669", size: "xs", flex: 2 },
+                                    { type: "text", text: `${data.caseName} (${data.gender})`, color: "#374151", size: "sm", flex: 5, weight: "bold" }
+                                ]
+                            },
+                            {
+                                type: "box",
+                                layout: "baseline",
+                                spacing: "sm",
+                                contents: [
+                                    { type: "text", text: "類別", color: "#059669", size: "xs", flex: 2 },
+                                    { type: "text", text: typesStr + devInfo, wrap: true, color: "#374151", size: "sm", flex: 5 }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            footer: {
+                type: "box",
+                layout: "horizontal",
+                spacing: "md",
+                contents: [
+                    {
+                        type: "button",
+                        style: "primary",
+                        color: "#059669",
+                        action: {
+                            type: "uri",
+                            label: "查看案件",
+                            uri: "https://liff.line.me/2008645610-0MezRE9Z?view=case_review"
+                        }
+                    }
+                ]
+            }
+        }
+    };
+
+    await fetch('https://api.line.me/v2/bot/message/multicast', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN
+        },
+        body: JSON.stringify({
+            to: reviewers,
+            messages: [flexMessage]
+        })
+    });
+}
