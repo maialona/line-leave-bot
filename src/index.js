@@ -1,9 +1,9 @@
-import { indexHtml } from './views/index.html.js';
 import { checkUser, bindUser } from './api/user-service.js';
 import { submitLeave, getLeaves, reviewLeave, cancelLeave } from './api/leave-service.js';
 import { webhookHandler } from './api/webhook-handler.js';
 import { submitCase, getCases, reviewCase, checkPendingCaseReminders } from './api/case-service.js';
 import { whisperHandlers } from './api/whisper-service.js';
+import { bulletinHandlers } from './api/bulletin-service.js';
 
 export default {
     async fetch(request, env, ctx) {
@@ -22,11 +22,9 @@ export default {
                 return new Response(null, { headers: corsHeaders });
             }
 
-            // 1. Serve Frontend
+            // 1. Serve Frontend - Legacy removed
             if (request.method === 'GET' && (path === '/' || path === '/index.html')) {
-                return new Response(indexHtml, {
-                    headers: { 'Content-Type': 'text/html;charset=UTF-8' },
-                });
+                return new Response('API Running', { status: 200 });
             }
 
             // 2. API Routes
@@ -46,6 +44,9 @@ export default {
                     '/api/whisper/get': whisperHandlers.getWhispers,
                     '/api/whisper/reply': whisperHandlers.replyWhisper,
                     '/api/whisper/delete': whisperHandlers.deleteWhisper, // New
+                    '/api/bulletin/get': bulletinHandlers.getBulletins,
+                    '/api/bulletin/create': bulletinHandlers.createBulletin,
+                    '/api/bulletin/delete': bulletinHandlers.deleteBulletin,
                     '/webhook': webhookHandler
                 };
 

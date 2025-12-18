@@ -1,0 +1,12 @@
+{
+  "name": "leave-bot-root",
+  "version": "1.0.0",
+  "scripts": {
+    "deploy": "npm run build:frontend && npm run deploy:worker",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "deploy:worker": "npx wrangler deploy --assets frontend/dist"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

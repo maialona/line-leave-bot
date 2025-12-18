@@ -12,11 +12,15 @@ export async function getSheetData(sheetId, range, token) {
 
 export async function updateSheetCell(sheetId, range, value, token) {
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`;
-    await fetch(url, {
+    const resp = await fetch(url, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ values: [[value]] }),
     });
+    const data = await resp.json();
+    if (data.error) {
+        throw new Error(`Google Sheets Update Error: ${data.error.message}`);
+    }
 }
 
 export async function appendSheetRows(sheetId, range, values, token) {

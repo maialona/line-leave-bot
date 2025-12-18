@@ -42,23 +42,24 @@ async function getRecipients(req, env) {
 
 async function submitWhisper(req, env) {
     const data = await req.json();
-    const { senderUid, senderName, unit, recipientUid, recipientName, subject, content } = data;
+    const { senderUid, senderName, unit, recipientUid, recipientName, subject, content, isAnonymous } = data;
     const token = await getAccessToken(env);
     
     const id = crypto.randomUUID();
     const timestamp = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
     const status = 'Unread';
     
-    // Columns: ID, Timestamp, SenderUID, SenderName, Unit, RecipientUID, RecipientName, Subject, Content, Status, ReplyContent, ReplyTime, ReplyAuthor
+    // Columns: ID, Timestamp, SenderUID, SenderName, Unit, RecipientUID, RecipientName, Subject, Content, Status, ReplyContent, ReplyTime, ReplyAuthor, IsAnonymous, History
     const row = [
-        id, timestamp, senderUid, senderName, unit, recipientUid, recipientName, subject, content, status, '', '', ''
+        id, timestamp, senderUid, senderName, unit, recipientUid, recipientName, subject, content, status, '', '', '', isAnonymous ? 'true' : 'false', ''
     ];
     
-    await appendSheetRows(env.SHEET_ID, `${WHISPER_SHEET}!A2:M`, [row], token);
+    // Append to Col A-O (15 columns)
+    await appendSheetRows(env.SHEET_ID, `${WHISPER_SHEET}!A2:O`, [row], token);
     
     // Notification
     try {
-        await sendWhisperNotification(recipientUid, senderName, subject, env);
+        await sendWhisperNotification(recipientUid, senderName, subject, env, isAnonymous);
     } catch (e) { console.error('Notify Error:', e); }
     
     return { success: true, message: '悄悄話已送出' };
@@ -68,41 +69,80 @@ async function getWhispers(req, env) {
     const { uid, role } = await req.json();
     
     const token = await getAccessToken(env);
-    const rows = await getSheetData(env.SHEET_ID, `${WHISPER_SHEET}!A2:M`, token);
+    // Fetch up to Column O (History)
+    const rows = await getSheetData(env.SHEET_ID, `${WHISPER_SHEET}!A2:O`, token);
     
-    // Columns: 0:ID, 1:Time, 2:SenderUID, 3:SenderName, 4:Unit, 5:RecipientUID, 6:RecipientName, 7:Subject, 8:Content, 9:Status, 10:ReplyContent, 11:ReplyTime, 12:ReplyAuthor
+    // Columns: 0:ID, 1:Time, 2:SenderUID, 3:SenderName, 4:Unit, 5:RecipientUID, 6:RecipientName, 7:Subject, 8:Content, 9:Status, 10:ReplyContent, 11:ReplyTime, 12:ReplyAuthor, 13:IsAnonymous, 14:History
     
     let filtered = [];
     if (role === 'staff') {
-        // Staff sees messages they sent
         filtered = rows.filter(row => row[2] === uid && row[9] !== 'Deleted');
     } else {
-        // Supervisor sees messages sent TO them
-        console.log(`[getWhispers] Supervisor mode. Filtering for RecipientUID: ${uid}`);
         filtered = rows.filter(row => {
             const isMatch = row[5] === uid && row[9] !== 'Deleted';
             return isMatch;
         });
-        console.log(`[getWhispers] Found ${filtered.length} messages for supervisor.`);
     }
     
     // Format for frontend
-    const messages = filtered.map((row, index) => ({
-        id: row[0],
-        timestamp: row[1],
-        senderUid: row[2],
-        senderName: row[3],
-        unit: row[4],
-        recipientUid: row[5],
-        recipientName: row[6],
-        subject: row[7],
-        content: row[8],
-        status: row[9],
-        replyContent: row[10] || '',
-        replyTime: row[11] || '',
-        replyAuthor: row[12] || '',
-        rowIndex: index + 2 // 1-based index + header row, used for updating reply
-    }));
+    const messages = filtered.map((row, index) => {
+        const isAnonymous = String(row[13]).toLowerCase() === 'true';
+        let displayName = row[3];
+        
+        const isRecipient = row[5] === uid;
+        if (isRecipient && isAnonymous) {
+            displayName = '🤫 匿名';
+        }
+
+        // Construct History
+        let history = [];
+        if (row[14]) {
+            try {
+                history = JSON.parse(row[14]);
+            } catch (e) {
+                 // Tolerate bad JSON (like manual "test" entry)
+                 console.error('Error parsing history');
+            }
+        } 
+        
+        // Lazy Migration: If history is empty (or failed parse), build from legacy
+        if (history.length === 0) {
+            // 1. Original Message
+            history.push({
+                sender: isAnonymous ? '🤫 匿名' : row[3],
+                uid: row[2], 
+                content: row[8],
+                timestamp: row[1],
+                role: 'staff'
+            });
+            // 2. Legacy Reply (if exists)
+            if (row[10]) {
+                history.push({
+                    sender: row[12], 
+                    uid: row[5], 
+                    content: row[10], 
+                    timestamp: row[11], 
+                    role: 'supervisor' 
+                });
+            }
+        }
+
+        return {
+            id: row[0],
+            timestamp: row[1],
+            senderUid: row[2],
+            senderName: displayName,
+            unit: row[4],
+            recipientUid: row[5],
+            recipientName: row[6],
+            subject: row[7],
+            content: row[8],
+            status: row[9],
+            isAnonymous: isAnonymous,
+            history: history,
+            rowIndex: index + 2
+        };
+    });
     
     // Sort by timestamp descending (newest first)
     messages.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -113,94 +153,86 @@ async function getWhispers(req, env) {
 }
 
 async function replyWhisper(req, env) {
-    const data = await req.json();
-    const { id, replyContent, replyAuthor } = data;
-    const token = await getAccessToken(env);
-    
-    // We need to find the row index first. 
-    // Ideally we pass it from frontend, but let's search to be safe or fetch freshly.
-    const rows = await getSheetData(env.SHEET_ID, `${WHISPER_SHEET}!A2:A`, token); // Read only IDs
-    const rowIndex = rows.findIndex(row => row[0] === id);
-    
-    if (rowIndex === -1) {
-        return { success: false, message: 'Message not found' };
-    }
-    
-    const actualRowIndex = rowIndex + 2; // +2 for A1 header and 0-based index
-    const replyTime = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
-    
-    // Update Status (Col J -> Index 9), ReplyContent (Col K -> Index 10), ReplyTime (Col L -> Index 11), ReplyAuthor (Col M -> Index 12)
-    // We can't update non-contiguous cells easily with batchUpdate using helper, but we can do individually or construct a range.
-    // 'Whisper!J{row}:M{row}'
-    
-    /* 
-       Wait, simple updateSheetCell only updates a single cell or we can pass a range.
-       The helper `updateSheetCell` takes (sheetId, range, value, token). 
-       The implementation does `body: JSON.stringify({ values: [[value]] })`. It assumes updating a single block.
-       We want to update J, K, L, M columns for that row.
-       
-       We need to use `updateSheetRows` logic but `updateSheetCell` implementation seems limited to single value?
-       Let's check `updateSheetCell` implementation in google-sheets.js again.
-       Line 13: `updateSheetCell(sheetId, range, value, token)`
-       Line 18: `values: [[value]]` 
-       It wraps the single value in a 2D array. If `value` itself is an array of values, it might be nested wrongly [[ [v1, v2] ]].
-       Wait, if I pass a row array as `value`, it becomes `[[ [v1, v2] ]]`. That's 1 row, 1 column containing an array? No.
-       
-       I might need to fix `updateSheetCell` or create a new `updateSheetRow`.
-       Actually, standard sheets API expects `values: [ [v1, v2, v3] ]` for a row update.
-       If `updateSheetCell` takes `value` and puts it as `[[value]]`, then `value` should be the scalar or the object.
-       
-       If `value` is `['Unread', 'content']`, `[[ ['Unread'] ]]` ? No.
-       
-       Let's assume I need to update cell by cell or fix the helper.
-       Actually, I can just update the ReplyContent/Time/Author which are contiguous (K, L, M) and Status (J).
-       So J, K, L, M are contiguous.
-       
-       I will modify `google-sheets.js` to support updating a range of values, or use `updateSheetCell` loop.
-       Loop is fine for now, or just send a raw fetch here.
-       
-       Let's try to update cell by cell for safety or write a `updateSheetRow` helper.
-       Actually, I'll just write the fetch call directly here to avoid modifying utils too much if not needed, 
-       BUT better to keep it consistent.
-       
-       Let's peek at `google-sheets.js` again. 
-       Line 18: `body: JSON.stringify({ values: [[value]] })` 
-       This strictly updates 1 cell (1x1).
-       
-       I will execute 4 updates or better yet, realize that `replyWhisper` is less frequent so 4 calls is acceptable but slow.
-       
-       To be essentially correct, I should add `updateSheetJwt` or similar. 
-       I will implement `updateSheetRow` in `google-sheets.js` first? 
-       No, I'll just do it inside `whisper-service.js` with `fetch` for now to save context switches/potential errors.
-       OR I update `google-sheets.js` to accept `values` (array of arrays).
-       
-       Let's stick to using the existing helper for now, maybe just update status and content.
-       I'll use specific ranges.
-    */
-    
-    // Update Status
-    await updateSheetCell(env.SHEET_ID, `${WHISPER_SHEET}!J${actualRowIndex}`, 'Replied', token);
-    // Update Reply Content
-    await updateSheetCell(env.SHEET_ID, `${WHISPER_SHEET}!K${actualRowIndex}`, replyContent, token);
-    // Update Reply Time
-    await updateSheetCell(env.SHEET_ID, `${WHISPER_SHEET}!L${actualRowIndex}`, replyTime, token);
-    // Update Reply Author
-    await updateSheetCell(env.SHEET_ID, `${WHISPER_SHEET}!M${actualRowIndex}`, replyAuthor, token);
-
-    // Notification
     try {
-        // Fetch original message details for notification
-        const msgRow = await getSheetData(env.SHEET_ID, `${WHISPER_SHEET}!C${actualRowIndex}:H${actualRowIndex}`, token);
-        // C: SenderUID (index 0 in result), D: SenderName, E: Unit, F: RecipientUID, G: RecipientName, H: Subject (index 5)
-        // Wait, getSheetData returns array of rows. Range C{row}:H{row} returns [[C, D, E, F, G, H]].
-        if (msgRow && msgRow.length > 0) {
-             const senderUid = msgRow[0][0];
-             const subject = msgRow[0][5];
-             await sendWhisperReplyNotification(senderUid, replyAuthor, subject, env);
+        const data = await req.json();
+        const { id, message, authorName, authorUid, authorRole } = data; // New Payload
+        const token = await getAccessToken(env);
+        
+        const rows = await getSheetData(env.SHEET_ID, `${WHISPER_SHEET}!A2:O`, token); 
+        const rowIndex = rows.findIndex(row => row[0] === id);
+        
+        if (rowIndex === -1) {
+            return { success: false, message: 'Message not found' };
         }
-    } catch (e) { console.error('Notify Reply Error:', e); }
+        
+        const actualRowIndex = rowIndex + 2;
+        const currentRow = rows[rowIndex];
+        const timestamp = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+        
+        // 1. Get/Build Current History
+        let history = [];
+        if (currentRow[14]) {
+            try {
+                history = JSON.parse(currentRow[14]);
+            } catch (e) {}
+        }
+        
+        if (history.length === 0) {
+            const isAnon = String(currentRow[13]).toLowerCase() === 'true';
+            history.push({
+                sender: isAnon ? '🤫 匿名' : currentRow[3],
+                uid: currentRow[2],
+                content: currentRow[8],
+                timestamp: currentRow[1],
+                role: 'staff'
+            });
+            if (currentRow[10]) {
+                history.push({
+                    sender: currentRow[12],
+                    uid: currentRow[5],
+                    content: currentRow[10],
+                    timestamp: currentRow[11],
+                    role: 'supervisor'
+                });
+            }
+        }
+        
+        // 2. Append New Message
+        history.push({
+            sender: authorName,
+            uid: authorUid,
+            content: message,
+            timestamp: timestamp,
+            role: authorRole
+        });
+        
+        // 3. Determine New Status & Update
+        const newStatus = authorRole === 'supervisor' ? 'Replied' : 'Unread';
+        
+        // Writes
+        await updateSheetCell(env.SHEET_ID, `${WHISPER_SHEET}!J${actualRowIndex}`, newStatus, token);
+        await updateSheetCell(env.SHEET_ID, `${WHISPER_SHEET}!O${actualRowIndex}`, JSON.stringify(history), token);
+        
+        // 4. Notification
+        try {
+            const senderUid = currentRow[2];
+            const recipientUid = currentRow[5];
+            const subject = currentRow[7];
+            
+            if (authorRole === 'supervisor') {
+                await sendWhisperReplyNotification(senderUid, authorName, subject, env);
+            } else {
+                const senderName = currentRow[3];
+                const isAnon = String(currentRow[13]).toLowerCase() === 'true';
+                await sendWhisperNotification(recipientUid, senderName, `Re: ${subject}`, env, isAnon);
+            }
+        } catch (e) { console.error('Notify Reply Error:', e); }
 
-    return { success: true, message: '已回覆' };
+        return { success: true, message: '已發送' };
+    } catch (e) {
+        console.error('ReplyWhisper Error:', e);
+        return { success: false, message: `System Error: ${e.message}` };
+    }
 }
 
 async function deleteWhisper(req, env) {

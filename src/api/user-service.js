@@ -83,6 +83,8 @@ export async function bindUser(request, env) {
 
         // Update UID (Col D -> index 3 -> Column D)
         await updateSheetCell(env.SHEET_ID, `${firstSheetName}!D${rowIndex}`, uid, token);
+        // Update Status (Col F -> index 5 -> Column F)
+        await updateSheetCell(env.SHEET_ID, `${firstSheetName}!F${rowIndex}`, 'Active', token);
 
         return { success: true };
 

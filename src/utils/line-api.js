@@ -325,16 +325,40 @@ export async function handleMessage(event, env) {
                     type: "action",
                     action: {
                         type: "uri",
-                        label: "📝 請假申請",
-                        uri: "https://liff.line.me/2008645610-0MezRE9Z?tab=apply"
+                        label: "🏠 入口",
+                        uri: "https://liff.line.me/2008645610-0MezRE9Z"
                     }
                 },
                 {
                     type: "action",
                     action: {
                         type: "uri",
-                        label: "📋 我的紀錄",
-                        uri: "https://liff.line.me/2008645610-0MezRE9Z?tab=my_records"
+                        label: "📢 布告欄",
+                        uri: "https://liff.line.me/2008645610-0MezRE9Z?view=bulletin"
+                    }
+                },
+                {
+                    type: "action",
+                    action: {
+                        type: "uri",
+                        label: "📝 請假",
+                        uri: "https://liff.line.me/2008645610-0MezRE9Z?view=leave"
+                    }
+                },
+                {
+                    type: "action",
+                    action: {
+                        type: "uri",
+                        label: "📂 開案/開發",
+                        uri: "https://liff.line.me/2008645610-0MezRE9Z?view=dev_apply"
+                    }
+                },
+                {
+                    type: "action",
+                    action: {
+                        type: "uri",
+                        label: "💬 悄悄話",
+                        uri: "https://liff.line.me/2008645610-0MezRE9Z?view=whisper"
                     }
                 }
             ]
@@ -479,9 +503,11 @@ export async function sendCaseApprovalNotification(data, env, token) {
 }
 
 // Whisper Notifications
-export async function sendWhisperNotification(recipientUid, senderName, subject, env) {
+export async function sendWhisperNotification(recipientUid, senderName, subject, env, isAnonymous) {
     const token = env.LINE_CHANNEL_ACCESS_TOKEN;
     const liffUrl = "https://liff.line.me/2008645610-0MezRE9Z"; 
+
+    const displayName = isAnonymous ? "🤫 匿名" : senderName;
 
     const message = {
         type: "flex",
@@ -497,7 +523,7 @@ export async function sendWhisperNotification(recipientUid, senderName, subject,
                 type: "box",
                 layout: "vertical",
                 contents: [
-                    { type: "text", text: `From: ${senderName}`, size: "sm", color: "#555555" },
+                    { type: "text", text: `From: ${displayName}`, size: "sm", color: "#555555" },
                     { type: "text", text: `Subject: ${subject}`, size: "md", weight: "bold", margin: "md", wrap: true }
                 ]
             },
