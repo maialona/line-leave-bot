@@ -205,13 +205,26 @@ export const indexHtml = `<!DOCTYPE html>
                 <div v-else-if="currentView === 'whisper'" class="flex-1 flex flex-col h-full overflow-hidden">
                     <!-- Header -->
                     <div class="mb-4 relative text-center flex-none">
-                        <button @click="whisperMode === 'list' ? currentView = 'landing' : whisperMode = 'list'" class="absolute left-0 top-1 text-gray-400 hover:text-gray-600">
+                        <button @click="whisperMode === 'list' ? currentView = 'menu' : whisperMode = 'list'" class="absolute left-0 top-1 text-gray-400 hover:text-gray-600">
                              <span v-if="whisperMode === 'list'">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                              </span>
                              <span v-else class="text-sm">取消</span>
                         </button>
                         <h1 class="text-xl font-bold text-gray-900">悄悄話</h1>
+                        
+                        <!-- Refresh Button (Only in List Mode) -->
+                        <button v-if="whisperMode === 'list'" @click="fetchWhispers" class="absolute right-0 top-1 text-gray-400 hover:text-indigo-600">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                        <!-- Delete Button (Only in Detail Mode) -->
+                         <button v-else-if="whisperMode === 'detail'" @click="deleteWhisper" class="absolute right-0 top-1 text-red-400 hover:text-red-600">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
                     </div>
 
                     <!-- 1. List View -->
@@ -239,7 +252,7 @@ export const indexHtml = `<!DOCTYPE html>
                                 <h4 class="font-medium text-gray-900 mb-1 truncate">{{ msg.subject }}</h4>
                                 <p class="text-xs text-gray-500 truncate">{{ msg.content }}</p>
                                 <div v-if="msg.status === 'Unread' && (user.role === '督導' || user.role === '業務負責人')" class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></div>
-                                <div v-if="msg.status === 'Replied'" class="absolute bottom-2 right-2 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">Eq回覆</div>
+                                <div v-if="msg.status === 'Replied'" class="absolute bottom-2 right-2 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">回覆</div>
                             </div>
                         </div>
                     </div>
@@ -1013,7 +1026,29 @@ export const indexHtml = `<!DOCTYPE html>
                         } else {
                             alert('回覆失敗: ' + data.message);
                         }
-                    } catch (e) { alert('错误'); console.error(e); }
+                    } catch (e) { alert('錯誤'); console.error(e); }
+                    submitting.value = false;
+                };
+
+                const deleteWhisper = async () => {
+                    if (!confirm('確定要刪除此訊息嗎？')) return;
+                    submitting.value = true;
+                     try {
+                        const res = await fetch(API_BASE + '/api/whisper/delete', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ id: currentWhisper.value.id })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            alert('訊息已刪除');
+                            whisperList.value = whisperList.value.filter(m => m.id !== currentWhisper.value.id);
+                            whisperMode.value = 'list';
+                            currentWhisper.value = null;
+                        } else {
+                            alert('刪除失敗: ' + data.message);
+                        }
+                    } catch (e) { alert('錯誤'); console.error(e); }
                     submitting.value = false;
                 };
 
@@ -1434,7 +1469,7 @@ export const indexHtml = `<!DOCTYPE html>
                     
                     // Whisper Exports
                     whisperMode, whisperList, whisperRecipients, whisperLoading, whisperForm, currentWhisper, replyContent,
-                    fetchWhisperRecipients, fetchWhispers, submitWhisper, replyWhisper, openWhisperDetail
+                    fetchWhisperRecipients, fetchWhispers, submitWhisper, replyWhisper, openWhisperDetail, deleteWhisper
                 };
             }
         }).mount('#app');

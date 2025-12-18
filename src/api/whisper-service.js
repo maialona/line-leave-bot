@@ -75,13 +75,12 @@ async function getWhispers(req, env) {
     let filtered = [];
     if (role === 'staff') {
         // Staff sees messages they sent
-        filtered = rows.filter(row => row[2] === uid);
+        filtered = rows.filter(row => row[2] === uid && row[9] !== 'Deleted');
     } else {
         // Supervisor sees messages sent TO them
         console.log(`[getWhispers] Supervisor mode. Filtering for RecipientUID: ${uid}`);
         filtered = rows.filter(row => {
-            const isMatch = row[5] === uid;
-            // console.log(`Row[5]: ${row[5]} vs ${uid} => ${isMatch}`);
+            const isMatch = row[5] === uid && row[9] !== 'Deleted';
             return isMatch;
         });
         console.log(`[getWhispers] Found ${filtered.length} messages for supervisor.`);
@@ -204,9 +203,27 @@ async function replyWhisper(req, env) {
     return { success: true, message: '已回覆' };
 }
 
+async function deleteWhisper(req, env) {
+    const { id } = await req.json();
+    const token = await getAccessToken(env);
+
+    // Find Row
+    const rows = await getSheetData(env.SHEET_ID, `${WHISPER_SHEET}!A2:A`, token);
+    const rowIndex = rows.findIndex(row => row[0] === id);
+    
+    if (rowIndex === -1) return { success: false, message: 'Message not found' };
+    
+    const actualRowIndex = rowIndex + 2;
+    // Update Status to 'Deleted' (Col J)
+    await updateSheetCell(env.SHEET_ID, `${WHISPER_SHEET}!J${actualRowIndex}`, 'Deleted', token);
+    
+    return { success: true, message: '已刪除' };
+}
+
 export const whisperHandlers = {
     getRecipients,
     submitWhisper,
     getWhispers,
-    replyWhisper
+    replyWhisper,
+    deleteWhisper
 };

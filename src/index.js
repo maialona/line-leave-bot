@@ -45,6 +45,7 @@ export default {
                     '/api/whisper/submit': whisperHandlers.submitWhisper,
                     '/api/whisper/get': whisperHandlers.getWhispers,
                     '/api/whisper/reply': whisperHandlers.replyWhisper,
+                    '/api/whisper/delete': whisperHandlers.deleteWhisper, // New
                     '/webhook': webhookHandler
                 };
 
