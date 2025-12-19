@@ -42,20 +42,20 @@ async function getRecipients(req, env) {
 
 async function submitWhisper(req, env) {
     const data = await req.json();
-    const { senderUid, senderName, unit, recipientUid, recipientName, subject, content, isAnonymous } = data;
+    const { senderUid, senderName, unit, recipientUid, recipientName, subject, content, isAnonymous, category } = data;
     const token = await getAccessToken(env);
     
     const id = crypto.randomUUID();
     const timestamp = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
     const status = 'Unread';
     
-    // Columns: ID, Timestamp, SenderUID, SenderName, Unit, RecipientUID, RecipientName, Subject, Content, Status, ReplyContent, ReplyTime, ReplyAuthor, IsAnonymous, History
+    // Columns: ID, Timestamp, SenderUID, SenderName, Unit, RecipientUID, RecipientName, Subject, Content, Status, ReplyContent, ReplyTime, ReplyAuthor, IsAnonymous, History, Category
     const row = [
-        id, timestamp, senderUid, senderName, unit, recipientUid, recipientName, subject, content, status, '', '', '', isAnonymous ? 'true' : 'false', ''
+        id, timestamp, senderUid, senderName, unit, recipientUid, recipientName, subject, content, status, '', '', '', isAnonymous ? 'true' : 'false', '', category || '一般'
     ];
     
-    // Append to Col A-O (15 columns)
-    await appendSheetRows(env.SHEET_ID, `${WHISPER_SHEET}!A2:O`, [row], token);
+    // Append to Col A-P (16 columns)
+    await appendSheetRows(env.SHEET_ID, `${WHISPER_SHEET}!A2:P`, [row], token);
     
     // Notification
     try {
@@ -69,10 +69,10 @@ async function getWhispers(req, env) {
     const { uid, role } = await req.json();
     
     const token = await getAccessToken(env);
-    // Fetch up to Column O (History)
-    const rows = await getSheetData(env.SHEET_ID, `${WHISPER_SHEET}!A2:O`, token);
+    // Fetch up to Column P (Category)
+    const rows = await getSheetData(env.SHEET_ID, `${WHISPER_SHEET}!A2:P`, token);
     
-    // Columns: 0:ID, 1:Time, 2:SenderUID, 3:SenderName, 4:Unit, 5:RecipientUID, 6:RecipientName, 7:Subject, 8:Content, 9:Status, 10:ReplyContent, 11:ReplyTime, 12:ReplyAuthor, 13:IsAnonymous, 14:History
+    // Columns: 0:ID ... 14:History, 15:Category
     
     let filtered = [];
     if (role === 'staff') {
@@ -140,6 +140,7 @@ async function getWhispers(req, env) {
             status: row[9],
             isAnonymous: isAnonymous,
             history: history,
+            category: row[15] || '一般', // Default legacy to General
             rowIndex: index + 2
         };
     });
@@ -158,7 +159,7 @@ async function replyWhisper(req, env) {
         const { id, message, authorName, authorUid, authorRole } = data; // New Payload
         const token = await getAccessToken(env);
         
-        const rows = await getSheetData(env.SHEET_ID, `${WHISPER_SHEET}!A2:O`, token); 
+        const rows = await getSheetData(env.SHEET_ID, `${WHISPER_SHEET}!A2:P`, token); 
         const rowIndex = rows.findIndex(row => row[0] === id);
         
         if (rowIndex === -1) {

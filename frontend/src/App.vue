@@ -15,7 +15,7 @@
     <transition name="fade">
       <div
         v-if="!loading"
-        class="glass-card p-6 w-full min-h-[600px] flex flex-col"
+        class="glass-card p-6 w-full h-[75vh] flex flex-col overflow-hidden"
       >
         <LandingView
           v-if="currentView === 'landing'"
@@ -160,6 +160,7 @@ const handleUserBound = (userData) => {
 const handleSwitchUser = (profileData) => {
   user.value = {
     ...profileData,
+    uid: user.value.uid, // Preserve valid UID
     profiles: user.value.profiles
   };
   currentView.value = "landing"; // Ensure we stay on landing or go to menu? Let's stay on landing (welcome screen) to confirm.

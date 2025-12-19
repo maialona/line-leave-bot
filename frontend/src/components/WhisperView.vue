@@ -137,6 +137,7 @@
             }}</span>
           </div>
           <h4 class="font-medium text-gray-900 mb-1 truncate">
+            <span class="text-xs px-1.5 py-0.5 rounded text-white mr-1" :class="getCategoryColor(msg.category)">{{ msg.category }}</span>
             {{ msg.subject }}
           </h4>
           <div
@@ -176,8 +177,15 @@
           <div class="mt-2 flex items-center">
             <input type="checkbox" id="anon" v-model="form.isAnonymous" class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
             <label for="anon" class="ml-2 text-sm text-gray-700 font-bold">🤫 匿名發送</label>
-          </div>
+            </div>
         </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">分類</label>
+          <select v-model="form.category" class="w-full rounded-lg border-gray-300 py-2 px-3 border bg-white">
+             <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
+          </select>
+        </div>
+
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1"
             >主旨</label
@@ -215,10 +223,7 @@
     >
       <div class="flex-1 overflow-y-auto p-4 space-y-6" ref="chatContainer">
         <!-- Subject Header -->
-        <div class="text-center mb-4">
-             <span class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold">{{ currentMsg.subject }}</span>
-        </div>
-
+        <!-- Sticky Subject Header Removed -->
         <!-- Message History -->
         <div v-for="(msg, index) in currentMsg.history" :key="index" class="flex flex-col">
              <!-- Check alignment: If I am Supervisor, 'supervisor' role is ME (Right). 'staff' is THEM (Left). -->
@@ -255,7 +260,18 @@
       </div>
 
       <!-- Chat Input -->
-      <div class="bg-white border-t p-3 flex items-end space-x-2">
+      <div v-if="isSupervisor" class="px-3 pb-3 bg-white border-t-0 flex space-x-2 overflow-x-auto no-scrollbar">
+          <button 
+            v-for="reply in quickReplies" 
+            :key="reply"
+            @click="useQuickReply(reply)"
+            class="flex-shrink-0 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-indigo-100 border border-indigo-200 transition-colors whitespace-nowrap"
+          >
+            {{ reply }}
+          </button>
+      </div>
+
+        <div class="bg-white border-t p-3 pb-10 flex items-end space-x-2">
         <textarea
           v-model="replyText"
           class="flex-1 rounded-xl border-gray-300 p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 resize-none h-12 max-h-32 transition-all"
@@ -298,7 +314,34 @@ const form = reactive({
   subject: "",
   content: "",
   isAnonymous: false,
+  category: "行政", // Default
 });
+
+const categories = ["行政", "薪資", "排班", "申訴", "系統", "其他"];
+
+function getCategoryColor(cat) {
+    if (cat === '系統') return 'bg-gray-500';
+    if (cat === '行政') return 'bg-blue-500';
+    if (cat === '薪資') return 'bg-green-500';
+    if (cat === '排班') return 'bg-orange-500';
+    if (cat === '申訴') return 'bg-red-500';
+    return 'bg-teal-500';
+}
+
+const quickReplies = [
+    "收到，我們會盡快處理",
+    "已處理完畢",
+    "請提供更多詳細資訊",
+    "好的，沒問題",
+    "需請您稍候",
+    "感謝回報"
+];
+
+const useQuickReply = (text) => {
+    replyText.value = text;
+    // Auto-focus logic if needed? 
+    // Or just send? Let's just fill for safety so they can edit.
+};
 
 const isSupervisor = computed(() =>
   ["Supervisor", "督導", "Business Manager", "業務負責人"].includes(
@@ -380,7 +423,7 @@ const submit = async () => {
     });
     if ((await res.json()).success) {
       alert("已送出");
-      Object.assign(form, { recipientUid: "", subject: "", content: "", isAnonymous: false });
+      Object.assign(form, { recipientUid: "", subject: "", content: "", isAnonymous: false, category: "行政" });
       mode.value = "list";
       fetchWhispers();
     } else alert("失敗");
@@ -415,9 +458,13 @@ const openDetail = async (msg) => {
   scrollToBottom();
 };
 
-const scrollToBottom = () => {
+const scrollToBottom = async () => {
+    await nextTick();
     if (chatContainer.value) {
-        chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+        chatContainer.value.scrollTo({
+            top: chatContainer.value.scrollHeight,
+            behavior: "smooth"
+        });
     }
 };
 
@@ -464,7 +511,7 @@ const sendReply = async () => {
       
       currentMsg.value.history.push(newMsg);
       replyText.value = "";
-      scrollToBottom();
+      await scrollToBottom();
     } else {
         alert("發送失敗: " + result.message);
     }

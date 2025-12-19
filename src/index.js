@@ -43,6 +43,7 @@ export default {
                     '/api/bulletin/get': bulletinHandlers.getBulletins,
                     '/api/bulletin/create': bulletinHandlers.createBulletin,
                     '/api/bulletin/delete': bulletinHandlers.deleteBulletin,
+                    '/api/bulletin/sign': bulletinHandlers.signBulletin, // New
                     '/webhook': webhookHandler
                 };
 

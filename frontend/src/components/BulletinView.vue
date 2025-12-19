@@ -1,26 +1,130 @@
 <template>
-  <div class="flex flex-col h-full animate-fade-in relative">
-    <!-- Main Content (Hidden when modal is open to prevent scroll issues) -->
-    <div v-show="!showCreateModal" class="flex flex-col h-full overflow-hidden">
+  <div class="flex flex-col h-full animate-fade-in relative bg-gray-50">
+    
+    <!-- VIEW: CREATE PAGE -->
+    <div v-if="isCreating" class="flex flex-col h-full bg-white">
+        <!-- Header -->
+        <div class="p-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+            <button @click="isCreating = false" class="text-gray-500 hover:text-gray-700">
+                取消
+            </button>
+            <h2 class="text-lg font-bold text-gray-800">發佈新公告</h2>
+            <div class="w-8"></div> <!-- Spacer -->
+        </div>
+
+        <!-- Form Content -->
+        <div class="flex-1 overflow-y-auto p-5 space-y-6">
+             <div class="space-y-1">
+                <label class="block text-sm font-bold text-gray-700">標題</label>
+                <input v-model="form.title" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-4 font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="請輸入標題" />
+             </div>
+             
+             <div class="space-y-1">
+                <label class="block text-sm font-bold text-gray-700">內容</label>
+                <textarea v-model="form.content" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-4 h-32 font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all leading-relaxed" placeholder="請輸入公告完整內容..."></textarea>
+             </div>
+             
+             <div class="grid grid-cols-2 gap-4">
+                 <div class="space-y-1">
+                     <label class="block text-sm font-bold text-gray-700">分類</label>
+                     <div class="relative">
+                        <select v-model="form.category" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 appearance-none">
+                             <option value="系統">系統</option>
+                             <option value="行政">行政</option>
+                             <option value="活動">活動</option>
+                             <option value="督導">督導</option>
+                             <option value="其他">其他</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                     </div>
+                 </div>
+                 <div class="space-y-1">
+                     <label class="block text-sm font-bold text-gray-700">優先級</label>
+                     <div class="relative">
+                        <select v-model="form.priority" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 appearance-none">
+                             <option value="Normal">一般</option>
+                             <option value="High">重要</option>
+                        </select>
+                         <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                     </div>
+                 </div>
+             </div>
+
+             <div class="grid grid-cols-2 gap-4">
+                 <div class="space-y-1">
+                    <label class="block text-sm font-bold text-gray-700">發佈對象</label>
+                    <div class="relative">
+                        <select v-model="form.targetUnit" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 appearance-none">
+                             <option value="All">所有機構</option>
+                             <option v-for="u in units" :key="u" :value="u">{{ u }}</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+                 </div>
+                 <div class="space-y-1">
+                    <label class="block text-sm font-bold text-gray-700">狀態</label>
+                    <div class="relative">
+                        <select v-model="form.status" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 appearance-none">
+                             <option value="published">立即發佈</option>
+                             <option value="scheduled">排程發佈</option>
+                        </select>
+                         <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+                 </div>
+             </div>
+
+             <div v-if="form.status === 'scheduled'" class="mt-2 animate-fade-in">
+                 <label class="block text-sm font-bold text-gray-700 mb-1">設定發佈時間</label>
+                 <input type="datetime-local" v-model="form.scheduledTime" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-3" />
+             </div>
+
+             <!-- Push Notification Checkbox -->
+             <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-start space-x-3">
+                 <div class="flex items-center h-5">
+                    <input type="checkbox" id="notify" v-model="form.notify" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300" />
+                 </div>
+                 <div class="flex flex-col">
+                    <label for="notify" class="text-sm font-bold text-indigo-900">
+                        發送 LINE 推播通知
+                    </label>
+                    <span class="text-xs text-indigo-600 mt-1">
+                        勾選後將會消耗 LINE 官方帳號的訊息額度。<br>建議僅在「重要/緊急」公告時使用。
+                    </span>
+                 </div>
+             </div>
+        </div>
+
+        <!-- Sticky Footer Action -->
+        <div class="p-4 border-t border-gray-100 bg-white pb-6">
+            <button 
+              @click="submitBulletin" 
+              :disabled="submitting"
+              class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/30 active:scale-95 transition-all flex justify-center items-center text-lg"
+            >
+               <svg v-if="!submitting" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+               <span v-if="submitting">處理中...</span>
+               <span v-else>確認發佈</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- VIEW: LIST -->
+    <div v-else class="flex flex-col h-full overflow-hidden">
         <!-- Header -->
         <div class="mb-4 flex items-center justify-between flex-shrink-0">
             <button
               @click="$emit('back')"
               class="text-gray-400 hover:text-gray-600 p-2"
             >
-              <svg
-                class="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M15 19l-7-7 7-7"
-                ></path>
-              </svg>
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
             </button>
             <h2 class="text-xl font-bold text-gray-800">佈告欄</h2>
             <div class="w-10"></div> <!-- Spacer -->
@@ -51,7 +155,7 @@
                 </button>
                 <button 
                 v-if="canCreate"
-                @click="showCreateModal = true"
+                @click="isCreating = true"
                 class="bg-lime-400 text-white p-2 rounded-full shadow-lg hover:bg-lime-500 transition-colors transform active:scale-95"
                 >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
@@ -67,118 +171,73 @@
             <div 
               v-for="item in filteredBulletins"
               :key="item.id"
-              class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all relative overflow-hidden"
+              class="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all relative overflow-hidden"
               :class="{'border-l-4 border-l-red-400': item.priority === 'High'}"
             >
-                <div class="flex justify-between items-start mb-2">
-                    <div class="flex items-center space-x-2">
-                        <span 
-                          class="text-xs px-2 py-0.5 rounded text-white"
-                          :class="getCategoryColor(item.category)"
-                        >
-                          {{ item.category }}
-                        </span>
-                        <span v-if="item.priority === 'High'" class="text-xs bg-red-100 text-red-500 px-2 py-0.5 rounded font-bold">重要</span>
-                        <span v-if="canCreate && item.status === 'draft'" class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-bold">草稿</span>
-                        <span v-if="canCreate && item.status === 'scheduled'" class="text-xs bg-lime-100 text-lime-700 px-2 py-0.5 rounded font-bold">排程 ({{ item.scheduledTime }})</span>
+                <!-- Clickable Header (Always Visible) -->
+                <div 
+                    @click="toggleItem(item.id)"
+                    class="p-4 cursor-pointer flex justify-between items-start transition-colors hover:bg-gray-50 bg-white"
+                >
+                    <div class="flex-1 min-w-0 pr-4">
+                         <!-- Tags & Time Row -->
+                         <div class="flex items-center space-x-2 mb-1.5 flex-wrap gap-y-1">
+                            <span 
+                              class="text-[10px] px-2 py-0.5 rounded text-white shadow-sm font-bold flex-shrink-0"
+                              :class="getCategoryColor(item.category)"
+                            >
+                              {{ item.category }}
+                            </span>
+                            <span v-if="item.priority === 'High'" class="text-[10px] bg-red-100 text-red-500 px-2 py-0.5 rounded font-bold flex-shrink-0">重要</span>
+                            <span v-if="canCreate && item.status === 'draft'" class="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-bold flex-shrink-0">草稿</span>
+                            <span v-if="canCreate && item.status === 'scheduled'" class="text-[10px] bg-lime-100 text-lime-700 px-2 py-0.5 rounded font-bold flex-shrink-0">排程 ({{ item.scheduledTime }})</span>
+                            <span class="text-[10px] text-gray-400 flex-shrink-0">{{ formatDate(item.timestamp) }}</span>
+                         </div>
+                         <!-- Title -->
+                         <h3 class="font-bold text-gray-800 text-base truncate">{{ item.title }}</h3>
                     </div>
-                    <span class="text-xs text-gray-400">{{ formatDate(item.timestamp) }}</span>
+                    
+                    <!-- Expand Icon -->
+                    <div class="mt-1 transition-transform duration-300" :class="{ 'rotate-180': expandedItems.has(item.id) }">
+                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
                 </div>
                 
-                <h3 class="font-bold text-gray-800 text-lg mb-1">{{ item.title }}</h3>
-                <p class="text-gray-600 text-sm whitespace-pre-wrap leading-relaxed">{{ item.content }}</p>
-                
-                <div class="mt-3 flex justify-between items-center bg-gray-50 p-2 rounded-lg -mx-2 -mb-2">
-                    <span class="text-xs text-gray-400">發布者: {{ item.author }}</span>
-                    <button 
-                       v-if="canCreate && item.author === user.name" 
-                       @click="deleteItem(item.id)"
-                       class="text-gray-300 hover:text-red-500 transition-colors"
-                    >
-                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                    </button>
+                <!-- Expanded Content -->
+                <div v-show="expandedItems.has(item.id)" class="px-4 pb-4 pt-0 text-sm animate-fade-in">
+                    <div class="border-t border-gray-50 my-2"></div>
+                    <p class="text-gray-600 whitespace-pre-wrap leading-relaxed">{{ item.content }}</p>
+                    
+                    <div class="mt-4 flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                        <span class="text-xs text-gray-400">發布者: {{ item.author }}</span>
+                        <div class="flex items-center space-x-2">
+                            <!-- Sign/Read Button -->
+                            <button 
+                                v-if="!isRead(item)"
+                                @click.stop="signBulletin(item)"
+                                class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full border border-indigo-200 hover:bg-indigo-100 transition-colors flex items-center font-bold"
+                            >
+                                <span>我已閱讀</span>
+                            </button>
+                            <span v-else class="text-xs text-green-600 flex items-center bg-green-50 px-2 py-0.5 rounded-full font-bold">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                已讀
+                            </span>
+
+                            
+                            <button 
+                            v-if="canCreate && item.author === user.name" 
+                            @click.stop="deleteItem(item.id)"
+                            class="text-gray-300 hover:text-red-500 transition-colors ml-2"
+                            >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Create Modal Overlay -->
-    <div v-if="showCreateModal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-        <!-- Modal Card -->
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-            <div class="p-5 flex flex-col h-full">
-        <h3 class="text-xl font-bold text-gray-800 mb-4 flex-shrink-0">發佈新公告</h3>
-        
-        <div class="space-y-4 flex-1 overflow-y-auto min-h-0 pr-1">
-             <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">標題</label>
-                <input v-model="form.title" class="w-full rounded-xl border border-gray-300 p-3" placeholder="輸入標題..." />
-             </div>
-             
-             <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">內容</label>
-                <textarea v-model="form.content" class="w-full rounded-xl border border-gray-300 p-3 h-32" placeholder="輸入公告內容..."></textarea>
-             </div>
-             
-             <div class="flex space-x-4">
-                 <div class="flex-1">
-                     <label class="block text-sm font-bold text-gray-700 mb-1">分類</label>
-                     <select v-model="form.category" class="w-full rounded-xl border border-gray-300 p-3">
-                         <option value="系統">系統</option>
-                         <option value="行政">行政</option>
-                         <option value="活動">活動</option>
-                         <option value="督導">督導</option>
-                         <option value="其他">其他</option>
-                     </select>
-                 </div>
-                 <div class="flex-1">
-                     <label class="block text-sm font-bold text-gray-700 mb-1">優先級</label>
-                     <select v-model="form.priority" class="w-full rounded-xl border border-gray-300 p-3">
-                         <option value="Normal">一般</option>
-                         <option value="High">重要</option>
-                     </select>
-                 </div>
-             </div>
-
-             <div class="flex space-x-4">
-                 <div class="flex-1">
-                    <label class="block text-sm font-bold text-gray-700 mb-1">發佈對象</label>
-                    <select v-model="form.targetUnit" class="w-full rounded-xl border border-gray-300 p-3">
-                         <option value="All">所有機構</option>
-                         <option v-for="u in units" :key="u" :value="u">{{ u }}</option>
-                     </select>
-                 </div>
-                 <div class="flex-1">
-                    <label class="block text-sm font-bold text-gray-700 mb-1">狀態</label>
-                    <select v-model="form.status" class="w-full rounded-xl border border-gray-300 p-3">
-                         <option value="published">發佈</option>
-                         <option value="scheduled">排程</option>
-                     </select>
-                 </div>
-             </div>
-
-             <div v-if="form.status === 'scheduled'" class="mt-4">
-                 <label class="block text-sm font-bold text-gray-700 mb-1">排程發佈時間</label>
-                 <input type="datetime-local" v-model="form.scheduledTime" class="w-full rounded-xl border border-gray-300 p-3" />
-             </div>
-
-        </div>
-        
-        <div class="flex space-x-3 mt-4">
-            <button @click="showCreateModal = false" class="flex-1 py-3 bg-gray-200 rounded-xl text-gray-700 font-bold">取消</button>
-            <button 
-              @click="submitBulletin" 
-              :disabled="submitting"
-              class="flex-1 py-3 bg-gradient-to-r from-teal-400 to-lime-400 text-white rounded-xl font-bold shadow-lg flex justify-center items-center"
-            >
-               <span v-if="submitting">發佈中...</span>
-               <span v-else>確認發佈</span>
-            </button>
-        </div>
-            </div>
-        </div>
-    </div>
-
   </div>
 </template>
 
@@ -191,9 +250,18 @@ const emit = defineEmits(['back']);
 const loading = ref(true);
 const bulletins = ref([]);
 const activeCategory = ref('all');
-const showCreateModal = ref(false);
+const isCreating = ref(false); // Mode switch: List vs Create Form
 const submitting = ref(false);
-const isManagementView = ref(false); // Toggle for Admin Management View
+const isManagementView = ref(false);
+const expandedItems = ref(new Set());
+
+function toggleItem(id) {
+    if (expandedItems.value.has(id)) {
+        expandedItems.value.delete(id);
+    } else {
+        expandedItems.value.add(id);
+    }
+}
 
 const form = ref({
     title: '',
@@ -201,8 +269,9 @@ const form = ref({
     category: '行政',
     priority: 'Normal',
     targetUnit: 'All',
-    status: 'published', // published, scheduled
-    scheduledTime: ''
+    status: 'published',
+    scheduledTime: '',
+    notify: false
 });
 
 const categories = [
@@ -267,8 +336,8 @@ async function submitBulletin() {
         const data = await res.json();
         if (data.success) {
             alert('發佈成功');
-            showCreateModal.value = false;
-            form.value = { title: '', content: '', category: '行政', priority: 'Normal', targetUnit: 'All', status: 'published', scheduledTime: '' };
+            isCreating.value = false; // Go back to list
+            form.value = { title: '', content: '', category: '行政', priority: 'Normal', targetUnit: 'All', status: 'published', scheduledTime: '', notify: false };
             fetchBulletins();
         } else {
             alert(data.message);
@@ -288,7 +357,7 @@ async function deleteItem(id) {
             body: JSON.stringify({ 
                 id, 
                 role: props.user.role,
-                userName: props.user.name // Pass user name for backend verification
+                userName: props.user.name 
             })
         });
         const data = await res.json();
@@ -306,7 +375,34 @@ function getCategoryColor(cat) {
 }
 
 function formatDate(ts) {
-    return ts.split(' ')[0]; // Simple date
+    return ts.split(' ')[0]; 
+}
+
+function isRead(item) {
+    return item.readBy && item.readBy.some(val => val && val.includes(props.user.uid));
+}
+
+async function signBulletin(item) {
+    const signature = `${props.user.name} (${props.user.uid})`;
+    
+    // Optimistic Update
+    if (!item.readBy) item.readBy = [];
+    if (!item.readBy.some(val => val && val.includes(props.user.uid))) {
+        item.readBy.push(signature);
+    }
+
+    try {
+        await fetch('/api/bulletin/sign', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                id: item.id, 
+                uid: props.user.uid,
+                name: props.user.name 
+            })
+        });
+    } catch(e) {
+        console.error('Sign error', e);
+    }
 }
 </script>
 

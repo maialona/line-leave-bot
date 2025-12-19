@@ -598,3 +598,79 @@ export async function sendWhisperReplyNotification(originalSenderUid, replierNam
         body: JSON.stringify({ to: originalSenderUid, messages: [message] })
     });
 }
+// Bulletin Notifications
+export async function sendBulletinNotification(uids, bulletin, env) {
+    if (!uids || uids.length === 0) return;
+
+    const token = env.LINE_CHANNEL_ACCESS_TOKEN;
+    const liffUrl = "https://liff.line.me/2008645610-0MezRE9Z?view=bulletin";
+
+    // Priority Color
+    const isHigh = bulletin.priority === 'High';
+    const headerColor = isHigh ? "#EF4444" : "#10B981"; // Red or Green
+    const headerText = isHigh ? "📢 重要公告" : "📢 新公告";
+
+    const message = {
+        type: "flex",
+        altText: `[公告] ${bulletin.title}`,
+        contents: {
+            type: "bubble",
+            header: {
+                type: "box",
+                layout: "vertical",
+                contents: [
+                    { type: "text", text: headerText, weight: "bold", color: "#FFFFFF", size: "lg" }
+                ],
+                backgroundColor: headerColor
+            },
+            body: {
+                type: "box",
+                layout: "vertical",
+                contents: [
+                    { type: "text", text: bulletin.title, weight: "bold", size: "xl", wrap: true, color: "#1F2937" },
+                    { 
+                        type: "box", 
+                        layout: "baseline", 
+                        margin: "md", 
+                        contents: [
+                            { type: "text", text: "分類", color: "#9CA3AF", size: "xs", flex: 2 },
+                            { type: "text", text: bulletin.category, color: "#4B5563", size: "sm", flex: 5 }
+                        ] 
+                    },
+                    { 
+                        type: "box", 
+                        layout: "baseline", 
+                        margin: "sm", 
+                        contents: [
+                            { type: "text", text: "發布者", color: "#9CA3AF", size: "xs", flex: 2 },
+                            { type: "text", text: bulletin.author, color: "#4B5563", size: "sm", flex: 5 }
+                        ] 
+                    }
+                ]
+            },
+            footer: {
+                type: "box",
+                layout: "vertical",
+                contents: [
+                    {
+                        type: "button",
+                        action: { type: "uri", label: "查看詳細內容", uri: liffUrl },
+                        style: "primary",
+                        color: headerColor
+                    }
+                ]
+            }
+        }
+    };
+
+    // Multicast (Max 500 per request)
+    // We assume < 500 for now. If > 500, need chunking.
+    await fetch('https://api.line.me/v2/bot/message/multicast', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ to: uids, messages: [message] })
+    });
+}
