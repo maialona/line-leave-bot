@@ -165,7 +165,17 @@
 
         <!-- Bulletin List -->
         <div class="flex-1 overflow-y-auto space-y-4 px-2 pb-20">
-            <div v-if="loading" class="text-center py-8 text-gray-400">讀取中...</div>
+            <div v-if="loading" class="space-y-4">
+                <div v-for="i in 3" :key="i" class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                   <div class="flex space-x-2 mb-2">
+                      <Skeleton width="40px" height="1.25rem" />
+                      <Skeleton width="40px" height="1.25rem" />
+                      <div class="flex-1"></div>
+                      <Skeleton width="60px" height="0.75rem" />
+                   </div>
+                   <Skeleton width="80%" height="1.5rem" />
+                </div>
+            </div>
             <div v-else-if="filteredBulletins.length === 0" class="text-center py-8 text-gray-400">目前沒有公告</div>
             
             <div 
@@ -243,6 +253,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import Skeleton from "./Skeleton.vue";
 
 const props = defineProps(['user', 'units']);
 const emit = defineEmits(['back']);

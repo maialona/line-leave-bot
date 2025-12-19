@@ -157,6 +157,99 @@ export async function reviewCase(request, env) {
     }
 }
 
+export async function getCaseRanking(request, env) {
+    try {
+        const token = await getAccessToken(env);
+
+        // 1. Get Staff List (Name to Role/Unit mapping)
+        const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${env.SHEET_ID}`;
+        const metaResp = await fetch(metaUrl, { headers: { Authorization: `Bearer ${token}` } });
+        const metaData = await metaResp.json();
+        const firstSheetName = metaData.sheets[0].properties.title;
+        const staffRows = await getSheetData(env.SHEET_ID, `${firstSheetName}!A2:F`, token);
+        
+        // Map: Name -> { role, unit, name }
+        const staffMap = {};
+        staffRows.forEach(row => {
+            const name = row[1]; // Col B is Name? Check getCases: row[2] is Role, row[0] is Unit. 
+            // Let's verify standard Staff_List columns from user-service or getCases.
+            // getCases line 53: r[3] === uid, r[0] === unit.
+            // getCases line 57: role = user[2].
+            // So: 0:Unit, 1:Name, 2:Role, 3:UID.
+            if (name) staffMap[name] = { unit: row[0], name: row[1], role: row[2] };
+        });
+
+        // 2. Get All Cases
+        const allRows = await getSheetData(env.SHEET_ID, 'Case_Applications!A2:K', token);
+        
+        // 3. Aggregate
+        const stats = {}; // { name: { opening: 0, development: 0, role: '', unit: '' } }
+
+        allRows.forEach(row => {
+            const status = row[10]; // Col K: Status
+            if (status !== 'Approved') return; // Only count Approved? Or all submitted? Usually Ranking counts Approved. Let's assume Approved.
+
+            const applicantName = row[2]; // Col C: Applicant Name
+            const applyTypes = row[7] || ''; // Col H: Apply Types (comma sep)
+            
+            if (!stats[applicantName]) {
+                const staff = staffMap[applicantName] || {};
+                stats[applicantName] = { 
+                    name: applicantName, 
+                    opening: 0, 
+                    development: 0, 
+                    role: staff.role || 'Unknown', 
+                    unit: staff.unit || '' 
+                };
+            }
+
+            if (applyTypes.includes('開案')) stats[applicantName].opening++;
+            if (applyTypes.includes('開發')) stats[applicantName].development += parseInt(row[9] || 0) || 1; // Col J: DevCount? Or just count 1? "開發" usually has count. Col J is DevCount.
+            // Wait, logic check: row[9] is devCount? 
+            // In submitCase: rowData includes form.devCount at index 9 (Col J).
+            // So development score should probably sum devCount.
+        });
+
+        // 4. Group by Role
+        const staffList = [];
+        const supervisorList = [];
+
+        Object.values(stats).forEach(s => {
+            const isSupervisor = ['Supervisor', '督導', 'Business Manager', '業務負責人'].includes(s.role);
+            if (isSupervisor) supervisorList.push(s);
+            else staffList.push(s);
+        });
+
+        // 5. Sort & Slice
+        const processList = (list) => {
+             // We need separate rankings for Opening and Development? 
+             // Or one list? User said "列出前五名", implied maybe two lists or filterable.
+             // "篩選居服員或是督導...排行"
+             // Usually Opening rank and Dev rank are separate.
+             // Or total? Let's return the full data and let frontend sort/display.
+             // Actually, returning Top 5 for each category is safer for payload size if list is huge.
+             
+             // Let's sort by Opening desc
+             const byOpening = [...list].sort((a, b) => b.opening - a.opening).slice(0, 5);
+             // Sort by Development desc
+             const byDev = [...list].sort((a, b) => b.development - a.development).slice(0, 5);
+             
+             return { byOpening, byDev };
+        };
+
+        return {
+            success: true,
+            rankings: {
+                staff: processList(staffList),
+                supervisor: processList(supervisorList)
+            }
+        };
+
+    } catch (e) {
+        throw e;
+    }
+}
+
 export async function checkPendingCaseReminders(env) {
     try {
         const token = await getAccessToken(env);

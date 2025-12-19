@@ -1,7 +1,7 @@
 import { checkUser, bindUser } from './api/user-service.js';
 import { submitLeave, getLeaves, reviewLeave, cancelLeave } from './api/leave-service.js';
 import { webhookHandler } from './api/webhook-handler.js';
-import { submitCase, getCases, reviewCase, checkPendingCaseReminders } from './api/case-service.js';
+import { submitCase, getCases, reviewCase, checkPendingCaseReminders, getCaseRanking } from './api/case-service.js';
 import { whisperHandlers } from './api/whisper-service.js';
 import { bulletinHandlers } from './api/bulletin-service.js';
 
@@ -34,6 +34,7 @@ export default {
                     '/api/submit-case': submitCase,
                     '/api/get-cases': getCases,
                     '/api/review-case': reviewCase,
+                    '/api/get-case-ranking': getCaseRanking,
                     '/api/whisper/recipients': whisperHandlers.getRecipients,
                     '/api/whisper/submit': whisperHandlers.submitWhisper,
                     '/api/whisper/get': whisperHandlers.getWhispers,

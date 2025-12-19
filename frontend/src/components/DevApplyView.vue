@@ -84,6 +84,20 @@
             class="absolute top-1 right-2 w-2 h-2 bg-red-500 rounded-full"
           ></span>
         </button>
+        <button
+          @click="
+            activeTab = 'ranking';
+            fetchRanking();
+          "
+          :class="
+            activeTab === 'ranking'
+              ? 'bg-white text-green-700 shadow-sm'
+              : 'text-gray-500'
+          "
+          class="flex-1 py-2 text-sm font-medium rounded-md transition"
+        >
+          🏆 排行榜
+        </button>
       </div>
     </div>
 
@@ -92,8 +106,21 @@
       v-if="activeTab === 'review'"
       class="flex-1 overflow-y-auto space-y-4 pb-10"
     >
+      <div v-if="loading" class="space-y-4">
+        <div v-for="i in 3" :key="i" class="bg-white border border-green-100 rounded-xl p-4 shadow-sm relative overflow-hidden">
+             <div class="flex justify-between items-start mb-2">
+                 <Skeleton width="100px" height="1.25rem" />
+                 <Skeleton width="60px" height="1rem" borderRadius="999px" />
+             </div>
+             <Skeleton width="150px" height="0.8rem" class="mb-2" />
+             <div class="grid grid-cols-2 gap-4 mt-2">
+                 <Skeleton height="2rem" />
+                 <Skeleton height="2rem" />
+             </div>
+        </div>
+      </div>
       <div
-        v-if="pendingCases.length === 0"
+        v-else-if="pendingCases.length === 0"
         class="text-center py-8 text-gray-400"
       >
         沒有待審核案件
@@ -147,7 +174,7 @@
 
     <!-- Application Form -->
     <form
-      v-else
+      v-else-if="activeTab === 'apply'"
       @submit.prevent="submit"
       class="space-y-4 flex-1 overflow-y-auto pb-10"
     >
@@ -301,6 +328,86 @@
       </button>
     </form>
 
+    <!-- Ranking View -->
+    <div
+      v-if="activeTab === 'ranking'"
+      class="flex-1 overflow-y-auto pb-10 space-y-4"
+    >
+      <!-- Filter -->
+      <div class="bg-gray-50 p-2 rounded-lg flex justify-center">
+         <select v-model="rankingFilter" class="bg-white border text-sm border-gray-300 text-gray-700 py-1 px-3 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+             <option value="staff">居服員排行</option>
+             <option value="supervisor">督導/業負排行</option>
+         </select>
+      </div>
+
+       <div v-if="loading" class="space-y-4">
+         <div v-for="i in 3" :key="i" class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm flex items-center space-x-4">
+            <Skeleton width="40px" height="40px" borderRadius="10px" />
+            <div class="flex-1 space-y-2">
+                <Skeleton width="100px" height="1rem" />
+                <Skeleton width="100%" height="0.5rem" />
+            </div>
+         </div>
+       </div>
+
+      <div v-else class="space-y-6"> 
+          <!-- Opening Ranking -->
+          <div class="bg-white border border-green-100 rounded-xl p-4 shadow-sm">
+              <h3 class="font-bold text-green-800 mb-4 flex items-center">
+                <span class="mr-2 text-xl">💰</span> 開案王 (前五名)
+              </h3>
+              <div v-if="currentRanking.byOpening.length === 0" class="text-center text-gray-400 py-4">尚無資料</div>
+              <div v-else class="space-y-4">
+                  <div v-for="(item, idx) in currentRanking.byOpening" :key="'op'+idx" class="flex items-center">
+                      <div 
+                        class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white shadow-sm flex-none mr-3"
+                        :class="idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-gray-300' : idx === 2 ? 'bg-orange-300' : 'bg-green-100 text-green-800'"
+                      >
+                          {{ idx + 1 }}
+                      </div>
+                      <div class="flex-1">
+                          <div class="flex justify-between items-end mb-1">
+                              <span class="font-medium text-gray-800">{{ item.name }}</span>
+                              <span class="font-bold text-green-600">{{ item.opening }} 案</span>
+                          </div>
+                          <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                              <div class="bg-green-500 h-2 rounded-full animate-bar" :style="{ width: (item.opening / (currentRanking.byOpening[0].opening || 1)) * 100 + '%' }"></div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          <!-- Development Ranking -->
+          <div class="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
+              <h3 class="font-bold text-blue-800 mb-4 flex items-center">
+                <span class="mr-2 text-xl">📈</span> 開發王 (前五名)
+              </h3>
+              <div v-if="currentRanking.byDev.length === 0" class="text-center text-gray-400 py-4">尚無資料</div>
+              <div v-else class="space-y-4">
+                  <div v-for="(item, idx) in currentRanking.byDev" :key="'dev'+idx" class="flex items-center">
+                       <div 
+                        class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white shadow-sm flex-none mr-3"
+                        :class="idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-gray-300' : idx === 2 ? 'bg-orange-300' : 'bg-blue-100 text-blue-800'"
+                      >
+                          {{ idx + 1 }}
+                      </div>
+                      <div class="flex-1">
+                          <div class="flex justify-between items-end mb-1">
+                              <span class="font-medium text-gray-800">{{ item.name }}</span>
+                              <span class="font-bold text-blue-600">{{ item.development }} 筆</span>
+                          </div>
+                          <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                              <div class="bg-blue-500 h-2 rounded-full animate-bar" :style="{ width: (item.development / (currentRanking.byDev[0].development || 1)) * 100 + '%' }"></div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+    </div>
+
     <!-- Help Modal -->
     <div
       v-if="showHelp"
@@ -365,12 +472,14 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
+import Skeleton from "./Skeleton.vue";
 
 const props = defineProps(["user"]);
 const emit = defineEmits(["back"]);
 
 const activeTab = ref("apply");
 const submitting = ref(false);
+const loading = ref(false);
 const showHelp = ref(false);
 const pendingCases = ref([]);
 
@@ -429,6 +538,7 @@ const submit = async () => {
 };
 
 const fetchCases = async () => {
+  loading.value = true;
   try {
     const res = await fetch("/api/get-cases", {
       method: "POST",
@@ -441,7 +551,35 @@ const fetchCases = async () => {
       : [];
   } catch (e) {
     console.error(e);
+  } finally {
+    loading.value = false;
   }
+};
+
+const rankingFilter = ref('staff'); // staff, supervisor
+const rankingData = ref({ staff: { byOpening: [], byDev: [] }, supervisor: { byOpening: [], byDev: [] } });
+
+const currentRanking = computed(() => {
+    return rankingData.value[rankingFilter.value] || { byOpening: [], byDev: [] };
+});
+
+const fetchRanking = async () => {
+   loading.value = true;
+   try {
+     const res = await fetch("/api/get-case-ranking", {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ uid: props.user.uid }) 
+     });
+     const data = await res.json();
+     if(data.success) {
+         rankingData.value = data.rankings;
+     }
+   } catch(e) {
+       console.error(e);
+   } finally {
+       loading.value = false;
+   }
 };
 
 const reviewCase = async (c, action) => {
@@ -485,5 +623,13 @@ onMounted(() => {
   to {
     opacity: 1;
   }
+}
+@keyframes grow-bar {
+  from {
+    width: 0;
+  }
+}
+.animate-bar {
+  animation: grow-bar 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 </style>

@@ -196,7 +196,7 @@ const bindUser = async () => {
         uid: profile.userId,
         name: regForm.value.name,
         unit: regForm.value.unit,
-        role: "居服員", 
+        role: data.role || "居服員", 
       });
     } else {
       alert(data.message || "綁定失敗");

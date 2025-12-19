@@ -125,7 +125,7 @@
                 </div>
                 <div class="bg-gray-100 rounded-full h-2.5 ml-8">
                 <div
-                    class="bg-indigo-500 h-2.5 rounded-full transition-all duration-500"
+                    class="bg-indigo-500 h-2.5 rounded-full animate-bar"
                     :style="{ width: (stat.days / maxDays) * 100 + '%' }"
                 ></div>
                 </div>
@@ -404,8 +404,29 @@
         </button>
       </form>
 
-      <!-- Staff History -->
+      <!-- Staff History (Loading & List) -->
       <div v-else class="flex-1 overflow-y-auto space-y-3 pb-20">
+        <!-- Loading Skeleton -->
+        <div v-if="loading" class="space-y-3">
+          <div v-for="i in 3" :key="i" class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+            <div class="flex justify-between mb-2">
+               <div class="space-y-2">
+                 <Skeleton width="80px" height="1.25rem" />
+                 <Skeleton width="120px" height="0.75rem" />
+               </div>
+               <Skeleton width="60px" height="1.5rem" borderRadius="9999px" />
+            </div>
+          </div>
+        </div>
+
+        <!-- List Content -->
+        <div v-else>
+        <div
+          v-if="allLeaves.length === 0"
+           class="text-center py-8 text-gray-400"
+        >
+          尚無紀錄
+        </div>
         <div
           v-for="leave in allLeaves"
           :key="leave.id"
@@ -433,16 +454,19 @@
         </div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
+import Skeleton from "./Skeleton.vue";
 
 const props = defineProps(["user"]);
 const emit = defineEmits(["back"]);
 
 const submitting = ref(false);
+const loading = ref(false);
 const activeTab = ref("pending"); // or 'apply'
 const allLeaves = ref([]);
 
@@ -543,6 +567,7 @@ const handleFileUpload = (e) => {
 
 // API
 const fetchLeaves = async () => {
+  loading.value = true;
   try {
     const res = await fetch("/api/get-leaves", {
       method: "POST",
@@ -553,6 +578,8 @@ const fetchLeaves = async () => {
     if (data.success) allLeaves.value = data.leaves || [];
   } catch (e) {
     console.error(e);
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -652,5 +679,13 @@ onMounted(() => {
   to {
     opacity: 1;
   }
+}
+@keyframes grow-bar {
+  from {
+    width: 0;
+  }
+}
+.animate-bar {
+  animation: grow-bar 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 </style>

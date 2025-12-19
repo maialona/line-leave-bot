@@ -110,11 +110,15 @@
       </div>
 
       <div class="flex-1 overflow-y-auto space-y-3 pb-20">
-        <div v-if="loading" class="text-center py-4">
-          <span
-            class="animate-spin inline-block w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full"
-          ></span>
+        <div v-if="loading" class="space-y-3">
+        <div v-for="i in 3" :key="i" class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+           <div class="flex justify-between mb-2">
+             <Skeleton width="100px" height="1rem" />
+             <Skeleton width="60px" height="0.75rem" />
+           </div>
+           <Skeleton width="80%" height="1.25rem" />
         </div>
+      </div>
         <div
           v-else-if="list.length === 0"
           class="text-center text-gray-400 py-10"
@@ -293,7 +297,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from "vue";
+import { ref, reactive, computed, onMounted, nextTick, watch } from "vue";
+import Skeleton from "./Skeleton.vue";
 
 const props = defineProps(["user"]);
 const emit = defineEmits(["back"]);

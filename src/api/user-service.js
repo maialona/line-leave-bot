@@ -69,10 +69,12 @@ export async function bindUser(request, env) {
 
         // Find matching user
         let rowIndex = -1;
+        let role = '';
         for (let i = 0; i < rows.length; i++) {
             // Unit(0) matches AND Name(1) matches AND Staff_ID(4) matches AND UID(3) is empty
             if (rows[i][0] === unit && rows[i][1] === name && rows[i][4] == staffId && !rows[i][3]) {
                 rowIndex = i + 2; // 1-based index, + header
+                role = rows[i][2];
                 break;
             }
         }
@@ -86,7 +88,7 @@ export async function bindUser(request, env) {
         // Update Status (Col F -> index 5 -> Column F)
         await updateSheetCell(env.SHEET_ID, `${firstSheetName}!F${rowIndex}`, 'Active', token);
 
-        return { success: true };
+        return { success: true, role: role };
 
     } catch (e) {
         throw e;
