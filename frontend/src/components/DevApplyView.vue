@@ -304,33 +304,58 @@
     <!-- Help Modal -->
     <div
       v-if="showHelp"
-      class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in"
     >
       <div
-        class="bg-white w-full max-w-sm rounded-xl p-5 shadow-2xl relative max-h-[80vh] overflow-y-auto"
+        class="bg-white w-full max-w-sm rounded-xl shadow-2xl relative flex flex-col max-h-[90vh]"
       >
-        <button
-          @click="showHelp = false"
-          class="absolute top-3 right-3 text-gray-400"
-        >
-          ✕
-        </button>
-        <h3 class="font-bold text-lg mb-4 text-center">獎金說明</h3>
-        <div class="space-y-4 text-sm text-gray-600">
-          <div class="bg-green-50 p-3 rounded-lg border border-green-100">
-            <h4 class="font-bold text-green-800 mb-2">💰 開案獎金</h4>
-            <ul class="list-disc pl-4 space-y-1">
-              <li>滿一年結算：</li>
-              <li>1案: $3,000</li>
-              <li>2案: $3,500</li>
-              <li>3案: $4,000</li>
-              <li>4案: $4,500</li>
-              <li>5案+: $5,000/案</li>
-            </ul>
+        <!-- Header (Fixed) -->
+        <div class="p-4 border-b border-gray-100 flex justify-between items-center shrink-0">
+             <h3 class="font-bold text-lg text-gray-800">獎金說明</h3>
+             <button
+               @click="showHelp = false"
+               class="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full bg-gray-50"
+             >
+               ✕
+             </button>
+        </div>
+
+        <!-- Content (Scrollable) -->
+        <div class="p-5 overflow-y-auto space-y-4 text-sm text-gray-600">
+          <div class="bg-green-50 p-4 rounded-lg border border-green-100">
+            <h4 class="font-bold text-green-800 mb-2 flex items-center">
+                <span class="mr-2">💰</span> 開案獎金
+            </h4>
+            <div class="text-sm text-green-900 space-y-2 leading-relaxed">
+                <p>開發或介紹進本公司服務，該個案實際服務滿八週後，即可累積一案。</p>
+                <p>於簽訂契約日起算至滿一年時，計算一年內的介紹和開發案件總數。</p>
+                <ul class="list-disc pl-5 font-bold space-y-1 mt-2 bg-white/50 p-2 rounded">
+                    <li>第一案： 3,000元</li>
+                    <li>第二案： 3,500元</li>
+                    <li>第三案： 4,000元</li>
+                    <li>第四案： 4,500元</li>
+                    <li>第五案以上：每案 5,000元</li>
+                </ul>
+            </div>
           </div>
-          <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
-            <h4 class="font-bold text-blue-800 mb-2">📈 開發獎金</h4>
-            <p>(變更後 - 初始) × 8% × 實際月數 (Max 3)</p>
+          
+          <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <h4 class="font-bold text-blue-800 mb-2 flex items-center">
+                <span class="mr-2">📈</span> 開發獎金
+            </h4>
+            <div class="text-sm text-blue-900 space-y-2 leading-relaxed">
+                <p>三個月計算一次，每年 2、5、8、11 月發放。</p>
+                <div class="bg-white/50 p-2 rounded border border-blue-200">
+                    <p class="font-bold mb-1">計算公式：</p>
+                    <p>開發獎金 = (該月變更計畫後額度 - 初始計畫額度) × 0.08</p>
+                </div>
+                <p>計算已實際服務月數最多為3個月，為同仁該季額度開發獎金，該項獎金為一次性發放。</p>
+                
+                <div class="mt-3 text-xs bg-white/60 p-3 rounded space-y-2">
+                    <p><span class="font-bold border-b border-blue-300">例如 1：</span><br>11月份新增開發 1000元 × 0.1 = 100元<br>(此為11月開發獎金，12月與1月一樣方式計算總計，發放時間為2月)</p>
+                    <p><span class="font-bold border-b border-blue-300">例如 2：</span><br>1月份新增開發 1000 × 0.1 = 100元<br>(此為1月開發獎金，發放時間為2月，2月與3月開發獎金發放時間為5月)</p>
+                </div>
+            </div>
           </div>
         </div>
       </div>

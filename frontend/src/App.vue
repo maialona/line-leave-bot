@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full max-w-md relative mx-auto min-h-[600px]">
+  <div class="fixed inset-0 h-[100dvh] w-full bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-4 overflow-hidden overscroll-none">
     <!-- Loading State -->
     <div
       v-if="loading"
@@ -15,7 +15,7 @@
     <transition name="fade">
       <div
         v-if="!loading"
-        class="glass-card p-6 w-full h-[75vh] flex flex-col overflow-hidden"
+        class="glass-card p-6 w-full max-w-md h-full flex flex-col overflow-hidden"
       >
         <LandingView
           v-if="currentView === 'landing'"

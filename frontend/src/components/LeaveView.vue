@@ -47,48 +47,7 @@
         </div>
       </div>
 
-      <!-- Leaderboard -->
-      <div
-        class="mb-4 bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex-none"
-      >
-        <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center">
-          🏆 本月請假排行榜
-        </h3>
-        <div
-          v-if="monthlyStats.length === 0"
-          class="text-xs text-gray-400 text-center py-2"
-        >
-          尚無紀錄
-        </div>
-        <div v-else class="space-y-3">
-          <div
-            v-for="(stat, idx) in monthlyStats"
-            :key="stat.name"
-            class="relative"
-          >
-            <div class="flex justify-between text-xs mb-1">
-              <span class="font-medium text-gray-700">
-                <span
-                  class="inline-block w-4 text-center mr-1"
-                  :class="{
-                    'text-yellow-500 font-bold': idx < 3,
-                    'text-gray-400': idx >= 3,
-                  }"
-                  >{{ idx + 1 }}</span
-                >
-                {{ stat.name }}
-              </span>
-              <span class="text-indigo-600 font-bold">{{ stat.days }} 天</span>
-            </div>
-            <div class="w-full bg-gray-100 rounded-full h-2">
-              <div
-                class="bg-indigo-500 h-2 rounded-full"
-                :style="{ width: (stat.days / maxDays) * 100 + '%' }"
-              ></div>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       <!-- Tabs -->
       <div class="flex space-x-2 mb-4 border-b border-gray-200 flex-none">
@@ -119,10 +78,64 @@
         >
           全部紀錄
         </button>
+        <button
+          @click="activeTab = 'ranking'"
+          :class="
+            activeTab === 'ranking'
+              ? 'border-indigo-500 text-indigo-600'
+              : 'text-gray-500'
+          "
+          class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent hover:text-gray-700"
+        >
+          排行榜
+        </button>
       </div>
 
-      <!-- List -->
-      <div class="flex-1 overflow-y-auto space-y-4 pb-20">
+      <!-- Ranking Content -->
+      <div v-if="activeTab === 'ranking'" class="flex-1 overflow-y-auto space-y-4 pb-20">
+          <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+            <h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center">
+            🏆 本月請假排行榜
+            </h3>
+            <div
+            v-if="monthlyStats.length === 0"
+            class="text-xs text-gray-400 text-center py-4"
+            >
+            尚無紀錄
+            </div>
+            <div v-else class="space-y-4">
+            <div
+                v-for="(stat, idx) in monthlyStats"
+                :key="stat.name"
+                class="relative"
+            >
+                <div class="flex justify-between text-sm mb-1">
+                <span class="font-medium text-gray-700 flex items-center">
+                    <span
+                    class="inline-flex items-center justify-center w-6 h-6 rounded-full mr-2 text-xs"
+                    :class="{
+                        'bg-yellow-100 text-yellow-700 font-bold': idx < 3,
+                        'bg-gray-100 text-gray-500': idx >= 3,
+                    }"
+                    >{{ idx + 1 }}</span
+                    >
+                    {{ stat.name }}
+                </span>
+                <span class="text-indigo-600 font-bold">{{ stat.days }} 天</span>
+                </div>
+                <div class="bg-gray-100 rounded-full h-2.5 ml-8">
+                <div
+                    class="bg-indigo-500 h-2.5 rounded-full transition-all duration-500"
+                    :style="{ width: (stat.days / maxDays) * 100 + '%' }"
+                ></div>
+                </div>
+            </div>
+            </div>
+          </div>
+      </div>
+
+      <!-- List Content -->
+      <div v-else class="flex-1 overflow-y-auto space-y-4 pb-20">
         <div
           v-if="displayLeaves.length === 0"
           class="text-center py-8 text-gray-400"
