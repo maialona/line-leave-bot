@@ -610,6 +610,18 @@ const submitLeave = async () => {
       alert("提交成功");
       fetchLeaves();
       activeTab.value = "my_records"; // switch to records
+      
+      // Reset Form
+      Object.assign(leaveForm, {
+        date: new Date().toISOString().split("T")[0],
+        startTime: "08:00",
+        endTime: "17:00",
+        leaveType: "事假",
+        reason: "",
+        proofBase66: "",
+        proofPreview: "",
+        cases: [],
+      });
     } else {
       alert(data.message || "提交失敗");
     }

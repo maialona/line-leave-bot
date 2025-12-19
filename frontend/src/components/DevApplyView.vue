@@ -518,7 +518,7 @@ const submit = async () => {
         ...form,
         uid: props.user.uid,
         applicant: props.user.name,
-        applyTypes: form.applyType,
+        applyTypes: [form.applyType],
       }),
     });
     if ((await res.json()).success) {
