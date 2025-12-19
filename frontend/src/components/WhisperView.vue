@@ -4,24 +4,21 @@
     <div class="mb-4 relative text-center flex-none">
       <button
         @click="handleBack"
-        class="absolute left-0 top-1 text-gray-400 hover:text-gray-600"
+        class="absolute left-0 top-1 text-gray-400 hover:text-gray-600 p-2"
       >
-        <span v-if="mode === 'list'">
-          <svg
-            class="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M15 19l-7-7 7-7"
-            ></path>
-          </svg>
-        </span>
-        <span v-else class="text-sm">返回</span>
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M15 19l-7-7 7-7"
+          ></path>
+        </svg>
       </button>
       <h1 class="text-xl font-bold text-gray-900">悄悄話</h1>
 
@@ -142,7 +139,6 @@
           <h4 class="font-medium text-gray-900 mb-1 truncate">
             {{ msg.subject }}
           </h4>
-          <p class="text-xs text-gray-500 truncate">{{ msg.content }}</p>
           <div
             v-if="msg.status === 'Unread' && isSupervisor"
             class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"
@@ -151,7 +147,7 @@
             v-if="msg.status === 'Replied'"
             class="absolute bottom-2 right-2 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded"
           >
-            回覆
+            已回覆
           </div>
         </div>
       </div>
@@ -397,6 +393,23 @@ const submit = async () => {
 const openDetail = async (msg) => {
   currentMsg.value = msg;
   mode.value = "detail";
+  
+  // Mark as Read if Supervisor and Unread
+  if (isSupervisor.value && msg.status === 'Unread') {
+      try {
+          // Optimistic UI update
+          msg.status = 'Read'; 
+          
+          await fetch('/api/whisper/read', {
+              method: 'POST',
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: msg.id })
+          });
+      } catch (e) {
+          console.error('Mark read failed', e);
+      }
+  }
+
   // Scroll to bottom
   await nextTick();
   scrollToBottom();

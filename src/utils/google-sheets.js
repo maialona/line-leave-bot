@@ -2,7 +2,11 @@
 export async function getSheetData(sheetId, range, token) {
     // IMPORTANT: encodeURIComponent is crucial for handling special chars like '!' in range
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}`;
-    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    // Use cache: 'no-store' to prevent caching
+    const resp = await fetch(url, { 
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store' 
+    });
     const data = await resp.json();
     if (data.error) {
         throw new Error(`Google Sheets API Error: ${data.error.message} (${data.error.code})`);

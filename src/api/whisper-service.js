@@ -252,10 +252,33 @@ async function deleteWhisper(req, env) {
     return { success: true, message: '已刪除' };
 }
 
+// ... existing code ...
+
+async function markAsRead(req, env) {
+    const data = await req.json();
+    const { id } = data;
+    const token = await getAccessToken(env);
+    
+    const rows = await getSheetData(env.SHEET_ID, `${WHISPER_SHEET}!A2:A`, token);
+    const rowIndex = rows.findIndex(row => row[0] === id);
+    
+    if (rowIndex === -1) {
+        return { success: false, message: 'Message not found' };
+    }
+    
+    const actualRowIndex = rowIndex + 2;
+    // Update Status (Column J -> Index 9) to 'Read'
+    // Status column is J. 
+    await updateSheetCell(env.SHEET_ID, `${WHISPER_SHEET}!J${actualRowIndex}`, 'Read', token);
+    
+    return { success: true };
+}
+
 export const whisperHandlers = {
     getRecipients,
     submitWhisper,
     getWhispers,
     replyWhisper,
-    deleteWhisper
+    deleteWhisper,
+    markAsRead // Export this
 };

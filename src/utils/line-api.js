@@ -318,7 +318,7 @@ export async function handleFollow(event, env) {
 export async function handleMessage(event, env) {
     const quickReply = {
         type: "text",
-        text: "請選擇服務：",
+        text: "您好～很高興為您服務！😊\n請點擊下方選單按鈕，讓我協助您進行相關操作～",
         quickReply: {
             items: [
                 {

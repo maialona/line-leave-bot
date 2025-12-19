@@ -46,9 +46,9 @@
             
             <button
             @click="isRebinding = true"
-            class="text-sm text-gray-400 underline hover:text-gray-600"
+            class="text-sm text-indigo-500 font-medium hover:text-indigo-700 py-2"
             >
-            切換帳號 / 重新綁定
+            ＋ 綁定其他身份 / 重新綁定
             </button>
          </div>
       </div>
