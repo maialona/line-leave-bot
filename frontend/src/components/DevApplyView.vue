@@ -152,7 +152,7 @@
         :key="c.timestamp"
         class="bg-white border border-green-100 rounded-xl p-4 shadow-sm relative overflow-hidden"
       >
-        <div class="absolute top-0 left-0 w-1 h-full bg-green-500"></div>
+        <div class="absolute top-0 left-0 w-1 h-full" :class="c.status === CASE_STATUS.PROCESSING ? 'bg-yellow-400' : 'bg-green-500'"></div>
         <div class="flex justify-between items-start mb-2 pl-2">
           <div>
             <h3 class="font-bold text-gray-900 text-lg">{{ c.applicant }}</h3>
@@ -161,8 +161,9 @@
             >
           </div>
           <span
-            class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium"
-            >{{ c.applyTypes }}</span
+            class="text-xs px-2 py-1 rounded-full font-medium"
+            :class="c.status === CASE_STATUS.PROCESSING ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'"
+            >{{ c.status === CASE_STATUS.PROCESSING ? '受理中' : c.applyTypes }}</span
           >
         </div>
 
@@ -175,17 +176,35 @@
             <span class="font-bold text-gray-500 text-xs uppercase">區域</span>
             {{ c.area }}
           </p>
+          <p v-if="c.status === CASE_STATUS.PROCESSING && c.firstServiceDate">
+              <span class="font-bold text-gray-500 text-xs uppercase">首次服務日</span>
+              {{ c.firstServiceDate }}
+          </p>
         </div>
 
         <div class="flex space-x-2 pt-2 border-t border-gray-100 pl-2">
+          <!-- Pending: Show Accept -->
           <button
-            @click="reviewCase(c, 'approve')"
+            v-if="c.status === CASE_STATUS.PENDING"
+            @click="openAcceptModal(c)"
             class="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium shadow"
           >
-            核准
+            受理
           </button>
+          
+          <!-- Processing: Show Approve (Check Maturity) -->
           <button
-            @click="reviewCase(c, 'reject')"
+            v-else-if="c.status === CASE_STATUS.PROCESSING"
+            @click="reviewCase(c, 'approve')"
+            :disabled="getDaysRemaining(c.firstServiceDate) > 0"
+            class="flex-1 py-2 rounded-lg text-sm font-medium shadow transition-colors"
+            :class="getDaysRemaining(c.firstServiceDate) > 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white'"
+          >
+            {{ getDaysRemaining(c.firstServiceDate) > 0 ? `核准 (剩 ${getDaysRemaining(c.firstServiceDate)} 天)` : '核准' }}
+          </button>
+          
+          <button
+            @click="openRejectModal(c)"
             class="flex-1 bg-white border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-medium"
           >
             駁回
@@ -377,8 +396,8 @@
                          <span class="text-xs text-gray-500">{{ c.timestamp.split('T')[0] }}</span>
                      </div>
                      <span class="text-xs px-2 py-1 rounded-full font-bold"
-                           :class="c.status === CASE_STATUS.APPROVED ? 'bg-green-100 text-green-800' : c.status === CASE_STATUS.REJECTED ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'">
-                         {{ c.status === CASE_STATUS.APPROVED ? '已核准' : c.status === CASE_STATUS.REJECTED ? '已駁回' : '審核中' }}
+                           :class="c.status === CASE_STATUS.APPROVED ? 'bg-green-100 text-green-800' : c.status === CASE_STATUS.REJECTED ? 'bg-red-100 text-red-800' : c.status === CASE_STATUS.PROCESSING ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'">
+                         {{ c.status === CASE_STATUS.APPROVED ? '已核准' : c.status === CASE_STATUS.REJECTED ? '已駁回' : c.status === CASE_STATUS.PROCESSING ? '受理中' : '審核中' }}
                      </span>
                  </div>
                  
@@ -389,6 +408,28 @@
                         <span class="font-bold text-gray-500">審核人：</span>{{ c.reviewer }}
                         <span class="ml-2 text-gray-400">{{ c.reviewTime?.split('T')[0] }}</span>
                      </div>
+                     
+                     <!-- Reject Reason -->
+                     <div v-if="c.status === CASE_STATUS.REJECTED && c.rejectReason" class="mt-2 text-xs bg-red-50 p-2 rounded border border-red-100">
+                        <span class="font-bold text-red-800">駁回原因：</span>
+                        <p class="text-red-700 mt-1">{{ c.rejectReason }}</p>
+                     </div>
+                     
+                     <!-- 8-Week Progress Bar (Only for PROCESSING) -->
+                     <div v-if="c.status === CASE_STATUS.PROCESSING && c.firstServiceDate" class="mt-3">
+                        <div class="flex justify-between text-xs mb-1">
+                           <span class="text-gray-500">開案進度 (8週)</span>
+                           <span class="font-bold text-green-600">{{ getProgress(c.firstServiceDate) }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                           <div class="bg-green-500 h-2 rounded-full transition-all duration-1000" :style="{ width: getProgress(c.firstServiceDate) + '%' }"></div>
+                        </div>
+                        <p class="text-xs text-right text-gray-400 mt-1">剩餘 {{ getDaysRemaining(c.firstServiceDate) }} 天</p>
+                     </div>
+                     
+                     <p v-if="c.status === CASE_STATUS.PROCESSING && c.firstServiceDate && !c.reviewer" class="mt-2 text-xs text-gray-400">
+                        首次服務日: {{ c.firstServiceDate }}
+                     </p>
                  </div>
              </div>
         </div>
@@ -448,7 +489,7 @@
           <!-- Development Ranking -->
           <div class="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
               <h3 class="font-bold text-blue-800 mb-4 flex items-center">
-                <span class="mr-2 text-xl">📈</span> 開發王排行榜
+                <span class="mr-2 text-xl">📈</span> 開發排行榜
               </h3>
               <div v-if="currentRanking.byDev.length === 0" class="text-center text-gray-400 py-4">尚無資料</div>
               <div v-else class="space-y-4">
@@ -533,8 +574,33 @@
         </div>
       </div>
     </div>
-  </div>
-</template>
+    
+    <!-- Accept Modal (Date Picker) -->
+     <div v-if="showAcceptModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div class="bg-white w-full max-w-xs rounded-xl shadow-xl p-6">
+              <h3 class="font-bold text-lg mb-4 text-gray-900">請輸入首次服務日</h3>
+              <input type="date" v-model="acceptDate" class="w-full border border-gray-300 rounded-lg p-2 mb-4">
+              <div class="flex space-x-2">
+                  <button @click="confirmAccept" class="flex-1 bg-green-600 text-white py-2 rounded-lg font-bold shadow">確認受理</button>
+                  <button @click="showAcceptModal = false" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg font-bold">取消</button>
+              </div>
+          </div>
+     </div>
+     
+     <!-- Reject Modal -->
+     <div v-if="showRejectModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div class="bg-white w-full max-w-xs rounded-xl shadow-xl p-6">
+              <h3 class="font-bold text-lg mb-2 text-gray-900">確定駁回此案件？</h3>
+              <p class="text-xs text-gray-500 mb-4">請輸入駁回原因以便申請人修正</p>
+              <textarea v-model="rejectReason" class="w-full border border-gray-300 rounded-lg p-2 mb-4 h-24 resize-none" placeholder="請輸入駁回原因..."></textarea>
+              <div class="flex space-x-2">
+                  <button @click="confirmReject" class="flex-1 bg-red-600 text-white py-2 rounded-lg font-bold shadow">確認駁回</button>
+                  <button @click="showRejectModal = false" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg font-bold">取消</button>
+              </div>
+          </div>
+     </div>
+   </div>
+ </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
@@ -604,6 +670,55 @@ const submit = async () => {
   submitting.value = false;
 };
 
+const showAcceptModal = ref(false);
+const acceptDate = ref('');
+const targetCase = ref(null);
+
+const openAcceptModal = (c) => {
+    targetCase.value = c;
+    acceptDate.value = new Date().toISOString().split('T')[0];
+    showAcceptModal.value = true;
+};
+
+const confirmAccept = async () => {
+    if(!acceptDate.value) return alert('請選擇日期');
+    await reviewCase(targetCase.value, 'accept', acceptDate.value);
+    showAcceptModal.value = false;
+};
+
+const showRejectModal = ref(false);
+const rejectReason = ref('');
+
+const openRejectModal = (c) => {
+    targetCase.value = c;
+    rejectReason.value = '';
+    showRejectModal.value = true;
+};
+
+const confirmReject = async () => {
+    if(!rejectReason.value) return alert('請輸入駁回原因');
+    await reviewCase(targetCase.value, 'reject', null, rejectReason.value);
+    showRejectModal.value = false;
+};
+
+const getDaysRemaining = (firstServiceDate) => {
+    if(!firstServiceDate) return 56;
+    const start = new Date(firstServiceDate);
+    const today = new Date();
+    start.setHours(0,0,0,0);
+    today.setHours(0,0,0,0);
+    const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24));
+    return Math.max(0, 56 - diff);
+};
+
+const getProgress = (firstServiceDate) => {
+    if(!firstServiceDate) return 0;
+    const daysRemaining = getDaysRemaining(firstServiceDate);
+    const elapsed = 56 - daysRemaining;
+    const percent = Math.floor((elapsed / 56) * 100);
+    return Math.min(100, Math.max(0, percent));
+};
+
 const fetchCases = async () => {
   loading.value = true;
   try {
@@ -613,9 +728,11 @@ const fetchCases = async () => {
       body: JSON.stringify({ uid: props.user.uid, unit: props.user.unit }),
     });
     const data = await res.json();
+
+    // Also fetch PROCESSING cases for reviewer
     if (isSupervisor.value) {
         pendingCases.value = data.cases
-        ? data.cases.filter((c) => c.status === CASE_STATUS.PENDING)
+        ? data.cases.filter((c) => c.status === CASE_STATUS.PENDING || c.status === CASE_STATUS.PROCESSING)
         : [];
     } else {
         // Staff: Show all my cases sorted by date desc
@@ -654,8 +771,17 @@ const fetchRanking = async () => {
    }
 };
 
-const reviewCase = async (c, action) => {
-  if (!confirm(`確定${action === "approve" ? "核准" : "駁回"}?`)) return;
+const reviewCase = async (c, action, dateString = null, reason = null) => {
+  if (action === 'approve' && !confirm(`確定核准?`)) return; // Only confirm for approve, modals for others logic handle themselves (wait, accept has modal too)
+  // Actually, accept/reject have their own modals now, so we can remove generic confirm for them.
+  // Or just keep it simple. The modals call this function directly. 
+  // Let's remove the confirm if it's coming from a modal action (accept/reject).
+  // But wait, the button calls 'approve' directly.
+  
+  if (action === 'approve') {
+       if(!confirm('確定核准?')) return;
+  }
+  
   try {
     const res = await fetch("/api/review-case", {
       method: "POST",
@@ -665,6 +791,8 @@ const reviewCase = async (c, action) => {
         reviewerName: props.user.name,
         timestamp: c.timestamp,
         action: action,
+        firstServiceDate: dateString,
+        rejectReason: reason
       }),
     });
     if ((await res.json()).success) {

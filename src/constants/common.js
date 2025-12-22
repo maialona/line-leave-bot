@@ -13,6 +13,7 @@ export const LEAVE_STATUS = {
 
 export const CASE_STATUS = {
     PENDING: 'Pending',
+    PROCESSING: 'Processing',
     APPROVED: 'Approved',
     REJECTED: 'Rejected'
 };

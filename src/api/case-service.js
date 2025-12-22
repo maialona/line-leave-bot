@@ -87,7 +87,8 @@ export async function getCases(request, env) {
              devCount: ['Dev Count', '數量'],
              status: ['Status', '狀態', '審核狀態'],
              reviewer: ['Reviewer', '審核人'],
-             reviewTime: ['Review Time', '審核時間']
+             reviewTime: ['Review Time', '審核時間'],
+             firstServiceDate: ['First Service Date', '首次服務日', '首次服務日期']
         };
         const colMap = mapHeadersToIndexes(header, schema);
         
@@ -95,6 +96,7 @@ export async function getCases(request, env) {
         if (colMap.agency === -1) colMap.agency = 3;
         if (colMap.status === -1) colMap.status = 10;
         if (colMap.applicant === -1) colMap.applicant = 2;
+        if (colMap.firstServiceDate === -1) colMap.firstServiceDate = 13; // Col N
         
         // Filter Logic
         let cases = [];
@@ -139,17 +141,15 @@ function mapRowToCase(row, colMap) {
         devCount: get('devCount', 9),
         status: get('status', 10),
         reviewer: get('reviewer', 11),
-        reviewTime: get('reviewTime', 12)
+        reviewTime: get('reviewTime', 12),
+        firstServiceDate: get('firstServiceDate', 13),
+        rejectReason: get('rejectReason', 14)
     };
 }
 
 export async function reviewCase(request, env) {
     try {
-        const { uid, applicantUid, timestamp, action, reviewerName } = await request.json(); // applicantUid might be needed for notification?
-        // Note: We didn't store applicant UID in the sheet, only Name. 
-        // This makes notifying specific applicant harder via Push if we don't have their UID.
-        // For now, we will skip notifying Applicant via Push unless we add UID to sheet.
-        // OR we look up applicant UID by Name + StaffID in Staff_List.
+        const { uid, applicantUid, timestamp, action, reviewerName, firstServiceDate, rejectReason } = await request.json(); 
 
         const token = await getAccessToken(env);
 
@@ -162,13 +162,17 @@ export async function reviewCase(request, env) {
              timestamp: ['Timestamp', '時間戳記', '填寫時間'],
              status: ['Status', '狀態', '審核狀態'],
              reviewer: ['Reviewer', '審核人'],
-             reviewTime: ['Review Time', '審核時間']
+             reviewTime: ['Review Time', '審核時間'],
+             firstServiceDate: ['First Service Date', '首次服務日'],
+             rejectReason: ['Reject Reason', '駁回原因']
         };
         const colMap = mapHeadersToIndexes(header, schema);
         if (colMap.timestamp === -1) colMap.timestamp = 0;
         if (colMap.status === -1) colMap.status = 10;
         if (colMap.reviewer === -1) colMap.reviewer = 11;
         if (colMap.reviewTime === -1) colMap.reviewTime = 12;
+        if (colMap.firstServiceDate === -1) colMap.firstServiceDate = 13; // Col N
+        if (colMap.rejectReason === -1) colMap.rejectReason = 14; // Col O
 
         let rowIndex = -1;
         for (let i = 1; i < rows.length; i++) {
@@ -179,26 +183,50 @@ export async function reviewCase(request, env) {
         }
 
         if (rowIndex > -1) {
-            const status = action === 'approve' ? CASE_STATUS.APPROVED : CASE_STATUS.REJECTED;
+            let status = CASE_STATUS.PENDING;
+            if (action === 'approve') status = CASE_STATUS.APPROVED;
+            else if (action === 'reject') status = CASE_STATUS.REJECTED;
+            else if (action === 'accept') status = CASE_STATUS.PROCESSING;
+
             const time = new Date().toISOString();
 
-            // Status Cols
             const statusCol = colIndexToLetter(colMap.status);
             const reviewerCol = colIndexToLetter(colMap.reviewer);
             const reviewTimeCol = colIndexToLetter(colMap.reviewTime);
+            const firstServiceDateCol = colIndexToLetter(colMap.firstServiceDate);
+            const rejectReasonCol = colIndexToLetter(colMap.rejectReason);
             
-            if (colMap.reviewer === colMap.status + 1 && colMap.reviewTime === colMap.reviewer + 1) {
-                 const updateRange = `Case_Applications!${statusCol}${rowIndex}:${reviewTimeCol}${rowIndex}`;
+            // If contiguous, update in one go (K, L, M, N, O... wait O is 14)
+            if (colMap.reviewer === colMap.status + 1 && 
+                colMap.reviewTime === colMap.reviewer + 1 && 
+                colMap.firstServiceDate === colMap.reviewTime + 1 &&
+                colMap.rejectReason === colMap.firstServiceDate + 1) {
+                    
+                 const values = [[
+                    status, 
+                    reviewerName, 
+                    time, 
+                    (action === 'accept' ? firstServiceDate : (rows[rowIndex-1][colMap.firstServiceDate] || '')),
+                    (action === 'reject' ? rejectReason : '')
+                 ]];
+                 const updateRange = `Case_Applications!${statusCol}${rowIndex}:${rejectReasonCol}${rowIndex}`;
                  const url = `https://sheets.googleapis.com/v4/spreadsheets/${env.SHEET_ID}/values/${encodeURIComponent(updateRange)}?valueInputOption=USER_ENTERED`;
+                 
                  await fetch(url, {
                      method: 'PUT',
                      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-                     body: JSON.stringify({ values: [[status, reviewerName, time]] })
+                     body: JSON.stringify({ values: values })
                  });
             } else {
                  await updateSheetCell(env.SHEET_ID, `Case_Applications!${statusCol}${rowIndex}`, status, token);
                  await updateSheetCell(env.SHEET_ID, `Case_Applications!${reviewerCol}${rowIndex}`, reviewerName, token);
                  await updateSheetCell(env.SHEET_ID, `Case_Applications!${reviewTimeCol}${rowIndex}`, time, token);
+                 if (action === 'accept' && firstServiceDate) {
+                    await updateSheetCell(env.SHEET_ID, `Case_Applications!${firstServiceDateCol}${rowIndex}`, firstServiceDate, token);
+                 }
+                 if (action === 'reject' && rejectReason) {
+                    await updateSheetCell(env.SHEET_ID, `Case_Applications!${rejectReasonCol}${rowIndex}`, rejectReason, token);
+                 }
             }
 
             return { success: true };
@@ -323,7 +351,7 @@ export async function checkPendingCaseReminders(env) {
         const token = await getAccessToken(env);
 
         // 1. Get All Cases
-        const allRows = await getSheetData(env.SHEET_ID, 'Case_Applications!A1:M', token); // Header
+        const allRows = await getSheetData(env.SHEET_ID, 'Case_Applications!A1:N', token); // Header included (up to N)
         if (!allRows || allRows.length < 2) return;
 
         const header = allRows[0];
@@ -335,7 +363,8 @@ export async function checkPendingCaseReminders(env) {
             applyTypes: ['Apply Types', '申請類別'],
             status: ['Status', '狀態', '審核狀態'],
             caseName: ['Case Name', '個案姓名'],
-            applicant: ['Applicant', '申請人']
+            applicant: ['Applicant', '申請人'],
+            firstServiceDate: ['First Service Date', '首次服務日']
         };
         const colMap = mapHeadersToIndexes(header, schema);
         
@@ -346,6 +375,7 @@ export async function checkPendingCaseReminders(env) {
         if (colMap.status === -1) colMap.status = 10;
         if (colMap.caseName === -1) colMap.caseName = 5;
         if (colMap.applicant === -1) colMap.applicant = 2;
+        if (colMap.firstServiceDate === -1) colMap.firstServiceDate = 13;
 
         // 2. Filter Targets
         const today = new Date();
@@ -354,30 +384,39 @@ export async function checkPendingCaseReminders(env) {
         const reminders = [];
 
         rows.forEach(row => {
+
             const timestamp = row[colMap.timestamp];
             const unit = row[colMap.agency]; 
-            const applyTypes = row[colMap.applyTypes] || ''; // Handle potential undefined if empty
+            const applyTypes = row[colMap.applyTypes] || ''; 
             const status = row[colMap.status] || CASE_STATUS.PENDING;
             const caseName = row[colMap.caseName];
             const applicant = row[colMap.applicant];
+            const firstServiceDateStr = row[colMap.firstServiceDate];
 
+            // 1. Weekly Reminder for Pending Cases
             if (status === CASE_STATUS.PENDING && applyTypes.includes('開案')) {
                 const appDate = new Date(timestamp);
                 appDate.setHours(0, 0, 0, 0);
-
                 const diffTime = Math.abs(today - appDate);
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                // Weekly Reminder (e.g., 7, 14, 21...)
                 if (diffDays > 0 && diffDays % 7 === 0) {
-                    reminders.push({
-                        unit,
-                        applicant,
-                        caseName,
-                        daysPending: diffDays,
-                        timestamp
-                    });
+                    reminders.push({ type: 'weekly', unit, applicant, caseName, daysPending: diffDays });
                 }
+            } 
+            // 2. Maturity Reminder for Processing Cases (8 Weeks = 56 Days)
+            else if (status === CASE_STATUS.PROCESSING && firstServiceDateStr) {
+                 const firstServiceDate = new Date(firstServiceDateStr);
+                 firstServiceDate.setHours(0,0,0,0);
+                 
+                 const diffTime = Math.abs(today - firstServiceDate);
+                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                 
+                 // If exactly 56 days (8 weeks) or maybe periodically after? 
+                 // Let's notify on day 56.
+                 if (diffDays === 56) {
+                      reminders.push({ type: 'maturity', unit, applicant, caseName, daysPending: diffDays });
+                 }
             }
         });
 
@@ -409,64 +448,59 @@ export async function checkPendingCaseReminders(env) {
             const reviewers = unitReviewers[r.unit] || [];
             if (reviewers.length === 0) continue;
 
-            const flexMessage = {
-                type: "flex",
-                altText: `⏰ 開案追蹤提醒：${r.caseName} 已申請 ${r.daysPending} 天`,
-                contents: {
-                    type: "bubble",
-                    body: {
-                        type: "box",
-                        layout: "vertical",
-                        contents: [
-                            {
-                                type: "text",
-                                text: "開案進度追蹤",
-                                weight: "bold",
-                                color: "#DC2626", // Red for Alert
-                                size: "xs"
-                            },
-                            {
-                                type: "text",
-                                text: r.caseName,
-                                weight: "bold",
-                                size: "xl",
-                                margin: "md"
-                            },
-                            {
-                                type: "text",
-                                text: `申請人：${r.applicant}`,
-                                size: "sm",
-                                color: "#666666",
-                                margin: "sm"
-                            },
-                            {
-                                type: "text",
-                                text: `已過 ${r.daysPending} 天，請確認服務狀況`,
-                                size: "sm",
-                                color: "#DC2626",
-                                margin: "md",
-                                weight: "bold"
-                            }
-                        ]
-                    },
-                    footer: {
-                        type: "box",
-                        layout: "horizontal",
-                        contents: [
-                            {
-                                type: "button",
-                                style: "primary",
-                                color: "#DC2626",
-                                action: {
-                                    type: "uri",
-                                    label: "查看案件",
-                                    uri: "https://liff.line.me/2008645610-0MezRE9Z?view=case_review"
-                                }
-                            }
-                        ]
+            let flexMessage;
+            
+            if (r.type === 'weekly') {
+                 flexMessage = {
+                    type: "flex",
+                    altText: `⏰ 開案追蹤提醒：${r.caseName} 已申請 ${r.daysPending} 天`,
+                    contents: {
+                        type: "bubble",
+                        body: {
+                            type: "box",
+                            layout: "vertical",
+                            contents: [
+                                { type: "text", text: "開案進度追蹤", weight: "bold", color: "#DC2626", size: "xs" },
+                                { type: "text", text: r.caseName, weight: "bold", size: "xl", margin: "md" },
+                                { type: "text", text: `申請人：${r.applicant}`, size: "sm", color: "#666666", margin: "sm" },
+                                { type: "text", text: `已過 ${r.daysPending} 天，請確認服務狀況`, size: "sm", color: "#DC2626", margin: "md", weight: "bold" }
+                            ]
+                        },
+                        footer: {
+                            type: "box",
+                            layout: "horizontal",
+                            contents: [
+                                { type: "button", style: "primary", color: "#DC2626", action: { type: "uri", label: "查看案件", uri: "https://liff.line.me/2008645610-0MezRE9Z?view=case_review" } }
+                            ]
+                        }
                     }
-                }
-            };
+                };
+            } else if (r.type === 'maturity') {
+                flexMessage = {
+                    type: "flex",
+                    altText: `✅ 8週達標通知：${r.caseName} 已滿8週`,
+                    contents: {
+                        type: "bubble",
+                        body: {
+                            type: "box",
+                            layout: "vertical",
+                            contents: [
+                                { type: "text", text: "開案達標通知", weight: "bold", color: "#16A34A", size: "xs" },
+                                { type: "text", text: r.caseName, weight: "bold", size: "xl", margin: "md" },
+                                { type: "text", text: `申請人：${r.applicant}`, size: "sm", color: "#666666", margin: "sm" },
+                                { type: "text", text: `已服務滿 8 週，請進行核准！`, size: "sm", color: "#16A34A", margin: "md", weight: "bold" }
+                            ]
+                        },
+                        footer: {
+                            type: "box",
+                            layout: "horizontal",
+                            contents: [
+                                { type: "button", style: "primary", color: "#16A34A", action: { type: "uri", label: "前往核准", uri: "https://liff.line.me/2008645610-0MezRE9Z?view=case_review" } }
+                            ]
+                        }
+                    }
+                };
+            }
 
             await fetch('https://api.line.me/v2/bot/message/multicast', {
                 method: 'POST',
