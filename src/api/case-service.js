@@ -60,6 +60,8 @@ export async function getCases(request, env) {
         const isReviewer = ROLES.SUPERVISOR_ROLES.includes(role);
 
         // 2. Get Case Applications
+        const userName = user[1]; // Name is in Col 1
+
         // 2. Get Case Applications
         const meta2 = await fetch(metaUrl, { headers: { Authorization: `Bearer ${token}` } });
         const metaData2 = await meta2.json();
@@ -92,19 +94,23 @@ export async function getCases(request, env) {
         // Fallbacks
         if (colMap.agency === -1) colMap.agency = 3;
         if (colMap.status === -1) colMap.status = 10;
+        if (colMap.applicant === -1) colMap.applicant = 2;
         
         // Filter Logic
         let cases = [];
         rows.forEach(row => {
             const rowUnit = row[colMap.agency]; 
-            const rowStatus = row[colMap.status] || CASE_STATUS.PENDING;
+            const rowApplicant = row[colMap.applicant];
 
             if (isReviewer) {
                 if (rowUnit === unit) {
                     cases.push(mapRowToCase(row, colMap));
                 }
             } else {
-                 // Staff view logic (omitted as per original)
+                 // Staff view logic: Filter by Name
+                 if (rowApplicant === userName) {
+                    cases.push(mapRowToCase(row, colMap));
+                 }
             }
         });
 

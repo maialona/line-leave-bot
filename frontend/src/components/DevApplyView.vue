@@ -42,9 +42,9 @@
       </button>
     </div>
 
-    <!-- Supervisor Dashboard (Tabs) -->
-    <div v-if="isSupervisor" class="mb-4">
-      <div class="flex items-center justify-center space-x-2 mb-2">
+    <!-- Tabs (All Roles) -->
+    <div class="mb-4">
+      <div v-if="isSupervisor" class="flex items-center justify-center space-x-2 mb-2">
         <span
           class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full"
           >{{ user.role }}</span
@@ -66,7 +66,10 @@
         >
           📝 填寫申請
         </button>
+        
+        <!-- Supervisor: Review Tab -->
         <button
+          v-if="isSupervisor"
           @click="
             activeTab = 'review';
             fetchCases();
@@ -84,7 +87,26 @@
             class="absolute top-1 right-2 w-2 h-2 bg-red-500 rounded-full"
           ></span>
         </button>
+
+        <!-- Staff: Records Tab -->
         <button
+          v-else
+          @click="
+            activeTab = 'records';
+            fetchCases();
+          "
+          :class="
+            activeTab === 'records'
+              ? 'bg-white text-green-700 shadow-sm'
+              : 'text-gray-500'
+          "
+          class="flex-1 py-2 text-sm font-medium rounded-md transition"
+        >
+          📂 申請紀錄
+        </button>
+
+        <button
+          v-if="isSupervisor"
           @click="
             activeTab = 'ranking';
             fetchRanking();
@@ -328,6 +350,50 @@
       </button>
     </form>
 
+    <!-- Staff Records View -->
+    <div v-else-if="activeTab === 'records'" class="flex-1 overflow-y-auto space-y-4 pb-10">
+        <div v-if="loading" class="space-y-4">
+             <div v-for="i in 3" :key="i" class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm flex items-center space-x-4">
+                <Skeleton width="40px" height="40px" borderRadius="10px" />
+                <div class="flex-1 space-y-2">
+                    <Skeleton width="100px" height="1rem" />
+                    <Skeleton width="100%" height="0.5rem" />
+                </div>
+             </div>
+        </div>
+        <div v-else-if="myCases.length === 0" class="text-center py-8 text-gray-400">
+             尚無申請紀錄
+        </div>
+        <div v-else v-for="c in myCases" :key="c.timestamp" class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm relative overflow-hidden">
+             <!-- Status Stripe -->
+             <div class="absolute top-0 left-0 w-1 h-full" 
+                  :class="c.status === CASE_STATUS.APPROVED ? 'bg-green-500' : c.status === CASE_STATUS.REJECTED ? 'bg-red-500' : 'bg-yellow-400'">
+             </div>
+             
+             <div class="pl-2">
+                 <div class="flex justify-between items-start mb-2">
+                     <div>
+                         <h3 class="font-bold text-gray-800 text-lg">{{ c.caseName }}</h3>
+                         <span class="text-xs text-gray-500">{{ c.timestamp.split('T')[0] }}</span>
+                     </div>
+                     <span class="text-xs px-2 py-1 rounded-full font-bold"
+                           :class="c.status === CASE_STATUS.APPROVED ? 'bg-green-100 text-green-800' : c.status === CASE_STATUS.REJECTED ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'">
+                         {{ c.status === CASE_STATUS.APPROVED ? '已核准' : c.status === CASE_STATUS.REJECTED ? '已駁回' : '審核中' }}
+                     </span>
+                 </div>
+                 
+                 <div class="space-y-1 text-sm text-gray-600">
+                     <p><span class="font-bold">區域：</span>{{ c.area }}</p>
+                     <p><span class="font-bold">類別：</span>{{ c.applyTypes }}</p>
+                     <div v-if="c.reviewer" class="mt-2 text-xs bg-gray-50 p-2 rounded">
+                        <span class="font-bold text-gray-500">審核人：</span>{{ c.reviewer }}
+                        <span class="ml-2 text-gray-400">{{ c.reviewTime?.split('T')[0] }}</span>
+                     </div>
+                 </div>
+             </div>
+        </div>
+    </div>
+
     <!-- Ranking View -->
     <div
       v-if="activeTab === 'ranking'"
@@ -482,7 +548,9 @@ const activeTab = ref("apply");
 const submitting = ref(false);
 const loading = ref(false);
 const showHelp = ref(false);
-const pendingCases = ref([]);
+const pendingCases = ref([]); // For Supervisor
+const myCases = ref([]); // For Staff
+
 
 const isSupervisor = computed(() =>
   ROLES.SUPERVISOR_ROLES.includes(props.user.role)
@@ -545,9 +613,14 @@ const fetchCases = async () => {
       body: JSON.stringify({ uid: props.user.uid, unit: props.user.unit }),
     });
     const data = await res.json();
-    pendingCases.value = data.cases
-      ? data.cases.filter((c) => c.status === CASE_STATUS.PENDING)
-      : [];
+    if (isSupervisor.value) {
+        pendingCases.value = data.cases
+        ? data.cases.filter((c) => c.status === CASE_STATUS.PENDING)
+        : [];
+    } else {
+        // Staff: Show all my cases sorted by date desc
+        myCases.value = data.cases ? data.cases.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)) : [];
+    }
   } catch (e) {
     console.error(e);
   } finally {
