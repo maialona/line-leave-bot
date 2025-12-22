@@ -143,13 +143,14 @@ function mapRowToCase(row, colMap) {
         reviewer: get('reviewer', 11),
         reviewTime: get('reviewTime', 12),
         firstServiceDate: get('firstServiceDate', 13),
-        rejectReason: get('rejectReason', 14)
+        rejectReason: get('rejectReason', 14),
+        devDetails: get('devDetails', 15) ? JSON.parse(get('devDetails', 15)) : []
     };
 }
 
 export async function reviewCase(request, env) {
     try {
-        const { uid, applicantUid, timestamp, action, reviewerName, firstServiceDate, rejectReason } = await request.json(); 
+        const { uid, applicantUid, timestamp, action, reviewerName, firstServiceDate, rejectReason, devDetails } = await request.json(); 
 
         const token = await getAccessToken(env);
 
@@ -164,7 +165,8 @@ export async function reviewCase(request, env) {
              reviewer: ['Reviewer', '審核人'],
              reviewTime: ['Review Time', '審核時間'],
              firstServiceDate: ['First Service Date', '首次服務日'],
-             rejectReason: ['Reject Reason', '駁回原因']
+             rejectReason: ['Reject Reason', '駁回原因'],
+             devDetails: ['Dev Details', '開發明細']
         };
         const colMap = mapHeadersToIndexes(header, schema);
         if (colMap.timestamp === -1) colMap.timestamp = 0;
@@ -173,6 +175,7 @@ export async function reviewCase(request, env) {
         if (colMap.reviewTime === -1) colMap.reviewTime = 12;
         if (colMap.firstServiceDate === -1) colMap.firstServiceDate = 13; // Col N
         if (colMap.rejectReason === -1) colMap.rejectReason = 14; // Col O
+        if (colMap.devDetails === -1) colMap.devDetails = 15; // Col P
 
         let rowIndex = -1;
         for (let i = 1; i < rows.length; i++) {
@@ -195,21 +198,24 @@ export async function reviewCase(request, env) {
             const reviewTimeCol = colIndexToLetter(colMap.reviewTime);
             const firstServiceDateCol = colIndexToLetter(colMap.firstServiceDate);
             const rejectReasonCol = colIndexToLetter(colMap.rejectReason);
+            const devDetailsCol = colIndexToLetter(colMap.devDetails);
             
-            // If contiguous, update in one go (K, L, M, N, O... wait O is 14)
+            // If contiguous, update in one go (K, L, M, N, O, P... wait P is 15)
             if (colMap.reviewer === colMap.status + 1 && 
                 colMap.reviewTime === colMap.reviewer + 1 && 
                 colMap.firstServiceDate === colMap.reviewTime + 1 &&
-                colMap.rejectReason === colMap.firstServiceDate + 1) {
+                colMap.rejectReason === colMap.firstServiceDate + 1 &&
+                colMap.devDetails === colMap.rejectReason + 1) {
                     
                  const values = [[
                     status, 
                     reviewerName, 
                     time, 
-                    (action === 'accept' ? firstServiceDate : (rows[rowIndex-1][colMap.firstServiceDate] || '')),
-                    (action === 'reject' ? rejectReason : '')
+                    (action === 'accept' ? (firstServiceDate || '') : (rows[rowIndex-1][colMap.firstServiceDate] || '')),
+                    (action === 'reject' ? rejectReason : ''),
+                    (devDetails ? JSON.stringify(devDetails) : '')
                  ]];
-                 const updateRange = `Case_Applications!${statusCol}${rowIndex}:${rejectReasonCol}${rowIndex}`;
+                 const updateRange = `Case_Applications!${statusCol}${rowIndex}:${devDetailsCol}${rowIndex}`;
                  const url = `https://sheets.googleapis.com/v4/spreadsheets/${env.SHEET_ID}/values/${encodeURIComponent(updateRange)}?valueInputOption=USER_ENTERED`;
                  
                  await fetch(url, {
@@ -226,6 +232,9 @@ export async function reviewCase(request, env) {
                  }
                  if (action === 'reject' && rejectReason) {
                     await updateSheetCell(env.SHEET_ID, `Case_Applications!${rejectReasonCol}${rowIndex}`, rejectReason, token);
+                 }
+                 if (devDetails) {
+                    await updateSheetCell(env.SHEET_ID, `Case_Applications!${devDetailsCol}${rowIndex}`, JSON.stringify(devDetails), token);
                  }
             }
 

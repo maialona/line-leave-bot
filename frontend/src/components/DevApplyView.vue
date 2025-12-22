@@ -185,22 +185,37 @@
         <div class="flex space-x-2 pt-2 border-t border-gray-100 pl-2">
           <!-- Pending: Show Accept -->
           <button
-            v-if="c.status === CASE_STATUS.PENDING"
+            v-if="c.status === CASE_STATUS.PENDING && !c.applyTypes.includes('開發')"
             @click="openAcceptModal(c)"
             class="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium shadow"
           >
             受理
           </button>
+          <button
+            v-if="c.status === CASE_STATUS.PENDING && c.applyTypes.includes('開發')"
+            @click="openNoteModal(c)"
+            class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium shadow"
+          >
+            受理/記事本
+          </button>
           
           <!-- Processing: Show Approve (Check Maturity) -->
           <button
-            v-else-if="c.status === CASE_STATUS.PROCESSING"
+            v-else-if="c.status === CASE_STATUS.PROCESSING && !c.applyTypes.includes('開發')"
             @click="reviewCase(c, 'approve')"
             :disabled="getDaysRemaining(c.firstServiceDate) > 0"
             class="flex-1 py-2 rounded-lg text-sm font-medium shadow transition-colors"
             :class="getDaysRemaining(c.firstServiceDate) > 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white'"
           >
             {{ getDaysRemaining(c.firstServiceDate) > 0 ? `核准 (剩 ${getDaysRemaining(c.firstServiceDate)} 天)` : '核准' }}
+          </button>
+          
+          <button
+            v-else-if="c.status === CASE_STATUS.PROCESSING && c.applyTypes.includes('開發')"
+            @click="openNoteModal(c)"
+            class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium shadow"
+          >
+            記事本/結算
           </button>
           
           <button
@@ -430,6 +445,13 @@
                      <p v-if="c.status === CASE_STATUS.PROCESSING && c.firstServiceDate && !c.reviewer" class="mt-2 text-xs text-gray-400">
                         首次服務日: {{ c.firstServiceDate }}
                      </p>
+                     
+                     <!-- Staff Note Button -->
+                     <div v-if="c.applyTypes.includes('開發') && (c.status === CASE_STATUS.PROCESSING || c.status === CASE_STATUS.APPROVED)" class="mt-2">
+                        <button @click="openNoteModal(c, true)" class="text-blue-600 text-sm flex items-center hover:underline">
+                            <span class="mr-1">📝</span> 查看開發記事本
+                        </button>
+                     </div>
                  </div>
              </div>
         </div>
@@ -599,6 +621,92 @@
               </div>
           </div>
      </div>
+     
+     <!-- Suggestion/Note Modal -->
+     <div v-if="showNoteModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h3 class="font-bold text-lg text-gray-900">開發案件記事本</h3>
+                <button @click="showNoteModal = false" class="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            
+            <div class="p-4 overflow-y-auto flex-1 space-y-4">
+                <!-- Info -->
+                <div class="bg-blue-50 p-3 rounded-lg text-sm text-blue-900 grid grid-cols-2 gap-2">
+                    <p><span class="font-bold">申請人:</span> {{ targetCase?.applicant }}</p>
+                    <p><span class="font-bold">個案:</span> {{ targetCase?.caseName }}</p>
+                </div>
+
+                <!-- Table -->
+                <div class="border rounded-lg overflow-hidden">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-50 text-gray-700">
+                            <tr>
+                                <th class="p-2">月份</th>
+                                <th class="p-2 text-right">初始計畫額度</th>
+                                <th class="p-2 text-right">實際使用額度</th>
+                                <th class="p-2 text-right">開發獎金</th>
+                                <th v-if="!isReadOnly" class="p-2 w-8"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <tr v-if="noteDetails.length === 0">
+                                <td colspan="5" class="p-4 text-center text-gray-400">尚無紀錄</td>
+                            </tr>
+                            <tr v-for="(item, idx) in noteDetails" :key="idx" class="hover:bg-gray-50">
+                                <td class="p-2">{{ item.month }}</td>
+                                <td class="p-2 text-right">{{ item.initialAmount }}</td>
+                                <td class="p-2 text-right">{{ item.amount }}</td>
+                                <td class="p-2 text-right font-bold text-blue-600">{{ Math.round((item.amount - item.initialAmount) * 0.08) }}</td>
+                                <td v-if="!isReadOnly" class="p-2 text-center">
+                                    <button @click="removeNoteRow(idx)" class="text-red-400 hover:text-red-600">×</button>
+                                </td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Add Form (Supervisor Only) -->
+                <div v-if="!isReadOnly" class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <h4 class="font-bold text-gray-700 mb-3 text-sm">新增紀錄</h4>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="text-xs text-gray-500 block mb-1">月份</label>
+                            <select v-model="newNote.month" class="w-full text-sm border-gray-300 rounded p-1.5">
+                                <option v-for="m in monthOptions" :key="m" :value="m">{{ m }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 block mb-1">初始計畫額度 ($)</label>
+                            <input v-model="newNote.initialAmount" type="number" class="w-full text-sm border-gray-300 rounded p-1.5" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500 block mb-1">實際使用額度 ($)</label>
+                            <input v-model="newNote.amount" type="number" class="w-full text-sm border-gray-300 rounded p-1.5" placeholder="0">
+                        </div>
+                    </div>
+                    <button @click="addNoteRow" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-bold shadow hover:bg-indigo-700 transition">
+                        + 新增一列
+                    </button>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t flex space-x-3 shrink-0">
+                <button @click="showNoteModal = false" class="flex-1 py-3 rounded-xl border border-gray-300 text-gray-600 font-bold hover:bg-gray-50">
+                    {{ isReadOnly ? '關閉' : '取消' }}
+                </button>
+                <template v-if="!isReadOnly">
+                    <button @click="saveNote('accept')" class="flex-1 py-3 rounded-xl bg-yellow-500 text-white font-bold hover:bg-yellow-600 shadow-lg">
+                        暫存 (受理中)
+                    </button>
+                    <button @click="saveNote('approve')" class="flex-1 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 shadow-lg">
+                        結算 (已核准)
+                    </button>
+                </template>
+            </div>
+        </div>
+     </div>
    </div>
  </template>
 
@@ -701,6 +809,59 @@ const confirmReject = async () => {
     showRejectModal.value = false;
 };
 
+// Note System Logic
+const showNoteModal = ref(false);
+const isReadOnly = ref(false);
+
+const noteDetails = ref([]);
+const newNote = reactive({ month: '', initialAmount: '', amount: '' });
+
+const monthOptions = computed(() => {
+    const opts = [];
+    const today = new Date();
+    for (let i = -6; i < 6; i++) { // Previous 6 months to Next 5 months
+        const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        opts.push(`${y}-${m}`);
+    }
+    return opts;
+});
+
+const openNoteModal = (c, readonly = false) => {
+    targetCase.value = c;
+    isReadOnly.value = readonly;
+    noteDetails.value = c.devDetails || []; // Load existing or empty
+    
+    // Reset new note form
+    Object.assign(newNote, { month: monthOptions.value[1], initialAmount: '', amount: '' }); // Default to current month
+    
+    showNoteModal.value = true;
+};
+
+const addNoteRow = () => {
+    if(!newNote.month || !newNote.amount) return alert('請填寫完整');
+    noteDetails.value.push({ ...newNote });
+    // Reset fields except month
+    Object.assign(newNote, { initialAmount: '', amount: '' });
+};
+
+const removeNoteRow = (idx) => {
+    noteDetails.value.splice(idx, 1);
+};
+
+const saveNote = async (action) => {
+    if (noteDetails.value.length === 0) return alert('記事本不能為空');
+    if (!confirm(action === 'approve' ? '確定結算？案件將變更為已核准' : '確定暫存？案件將變更為受理中')) return;
+    
+    // Attach details to targetCase so reviewCase picks it up
+    targetCase.value.devDetails = noteDetails.value;
+    
+    await reviewCase(targetCase.value, action);
+    showNoteModal.value = false;
+};
+
+
 const getDaysRemaining = (firstServiceDate) => {
     if(!firstServiceDate) return 56;
     const start = new Date(firstServiceDate);
@@ -792,7 +953,8 @@ const reviewCase = async (c, action, dateString = null, reason = null) => {
         timestamp: c.timestamp,
         action: action,
         firstServiceDate: dateString,
-        rejectReason: reason
+        rejectReason: reason,
+        devDetails: c.devDetails // Pass details if exists
       }),
     });
     if ((await res.json()).success) {

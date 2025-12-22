@@ -98,6 +98,38 @@
       </button>
     </div>
 
+    <!-- Search & Filter Controls (Sticky below header) -->
+    <div v-if="mode === 'list'" class="px-4 mb-2 flex-none space-y-2">
+      <!-- Search Bar -->
+      <div class="relative">
+        <input 
+          v-model="searchQuery"
+          type="text" 
+          placeholder="搜尋主旨或內容..." 
+          class="w-full pl-9 pr-4 py-2 bg-gray-100 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all border-none"
+        >
+        <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600">
+           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      
+      <!-- Category Chips -->
+      <div class="flex space-x-2 overflow-x-auto no-scrollbar pb-1">
+        <button 
+          v-for="cat in ['全部', ...categories]" 
+          :key="cat"
+          @click="selectedCategory = cat"
+          class="flex-shrink-0 px-3 py-1 rounded-full text-xs font-bold transition-all border"
+          :class="selectedCategory === cat 
+            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105' 
+            : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'"
+        >
+          {{ cat }}
+        </button>
+      </div>
+    </div>
+
     <!-- List View -->
     <div v-if="mode === 'list'" class="flex-1 flex flex-col min-h-0">
       <div v-if="!isSupervisor" class="mb-4 flex-none">
@@ -120,14 +152,14 @@
         </div>
       </div>
         <div
-          v-else-if="list.length === 0"
+          v-else-if="filteredList.length === 0"
           class="text-center text-gray-400 py-10"
         >
-          尚無訊息
+          {{ list.length === 0 ? '尚無訊息' : '亦無搜尋結果' }}
         </div>
         <div
           v-else
-          v-for="msg in list"
+          v-for="msg in filteredList"
           :key="msg.id"
           @click="openDetail(msg)"
           class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer hover:bg-gray-50 relative transition-transform duration-200 active:scale-98"
@@ -312,6 +344,30 @@ const currentMsg = ref(null);
 const replyText = ref("");
 const sortOrder = ref("desc");
 const chatContainer = ref(null);
+
+const searchQuery = ref("");
+const selectedCategory = ref("全部");
+
+const filteredList = computed(() => {
+    let result = list.value;
+    
+    // Filter by Category
+    if (selectedCategory.value !== '全部') {
+        result = result.filter(m => m.category === selectedCategory.value);
+    }
+    
+    // Filter by Search Query
+    if (searchQuery.value.trim()) {
+        const q = searchQuery.value.toLowerCase();
+        result = result.filter(m => 
+            m.subject.toLowerCase().includes(q) || 
+            (m.content && m.content.toLowerCase().includes(q)) ||
+            (m.history && m.history.some(h => h.content.toLowerCase().includes(q)))
+        );
+    }
+    
+    return result;
+});
 
 const form = reactive({
   recipientUid: "",
