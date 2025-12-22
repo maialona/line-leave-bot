@@ -117,7 +117,7 @@
           >
             悄悄話
           </h3>
-          <p class="text-xs text-gray-500 truncate">匿名留言與反饋</p>
+          <p class="text-xs text-gray-500 truncate">匿名留言與申訴</p>
         </div>
         <div
           class="text-gray-300 group-hover:text-pink-500 transition-colors transform group-hover:translate-x-1"
