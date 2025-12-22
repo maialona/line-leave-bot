@@ -1,7 +1,8 @@
 import { getAccessToken } from '../utils/google-auth.js';
-import { getSheetData, updateSheetCell, appendSheetRows } from '../utils/google-sheets.js';
+import { getSheetData, updateSheetCell, appendSheetRows, mapHeadersToIndexes, colIndexToLetter } from '../utils/google-sheets.js';
 import { uploadImageToDrive } from '../utils/google-drive.js';
 import { sendApprovalNotification } from '../utils/line-api.js';
+import { LEAVE_STATUS, ROLES } from '../constants/common.js';
 
 export async function submitLeave(request, env) {
     try {
@@ -37,7 +38,7 @@ export async function submitLeave(request, env) {
                     timestamp, form.unit, form.uid, form.name, form.leaveType, form.date,
                     form.timeSlot, // Col G: Global Time
                     caseDetail,    // Col H: Case Name + Time
-                    form.reason, proofUrl, 'Pending',
+                    form.reason, proofUrl, LEAVE_STATUS.PENDING,
                     form.duration  // Col L: Duration (Hours)
                 ]);
             });
@@ -46,7 +47,7 @@ export async function submitLeave(request, env) {
                 timestamp, form.unit, form.uid, form.name, form.leaveType, form.date,
                 form.timeSlot, // Col G: Global Time
                 '',            // Col H: Empty Case
-                form.reason, proofUrl, 'Pending',
+                form.reason, proofUrl, LEAVE_STATUS.PENDING,
                 duration  // Col L: Duration (Hours)
             ]);
         }
@@ -78,7 +79,7 @@ export async function getLeaves(request, env) {
 
         if (!user) throw new Error('User not found');
 
-        const isSupervisor = ['Supervisor', '督導', 'Business Manager', '業務負責人'].includes(user[2]);
+        const isSupervisor = ROLES.SUPERVISOR_ROLES.includes(user[2]);
         const userUnit = user[0];
 
         // 2. Check if Leave_Records exists
@@ -92,7 +93,7 @@ export async function getLeaves(request, env) {
         }
 
         // 3. Get Leaves (Fetch Header + Data)
-        const allRows = await getSheetData(env.SHEET_ID, 'Leave_Records!A1:K', token);
+        const allRows = await getSheetData(env.SHEET_ID, 'Leave_Records!A1:Z', token); // Fetch more columns to be safe
 
         if (allRows.length < 2) {
             return {
@@ -102,26 +103,37 @@ export async function getLeaves(request, env) {
             };
         }
 
-        const header = allRows[0].map(h => h.trim().toLowerCase());
+        const header = allRows[0];
         const rows = allRows.slice(1);
 
-        // Fixed Column Mapping (Matches the write order in submit-leave)
-        const colMap = {
-            timestamp: 0,
-            unit: 1,
-            uid: 2,
-            name: 3,
-            leaveType: 4,
-            date: 5,
-            time: 6,
-            case: 7,
-            reason: 8,
-            proof: 9,
-            status: 10,
-            duration: 11 // Col L
+        // Dynamic Column Mapping
+        const schema = {
+            timestamp: ['Timestamp', '時間戳記', '填寫時間'],
+            unit: ['Unit', '單位', '所屬單位', '機構'],
+            uid: ['UID', 'User ID', '使用者ID'],
+            name: ['Name', '姓名', '居服員'],
+            leaveType: ['Leave Type', '假別'],
+            date: ['Date', '日期', '請假日期'],
+            time: ['Time Slot', '時間', '起訖時間'],
+            case: ['Case', '個案', '受影響個案'],
+            reason: ['Reason', '事由', '原因'],
+            proof: ['Proof', '證明', '圖片', '證明文件'],
+            status: ['Status', '狀態', '審核狀態'],
+            duration: ['Duration', '時數']
         };
+        
+        let colMap = mapHeadersToIndexes(header, schema);
 
-        // Group by Timestamp + UID
+        // Fallback for missing columns (Backwards Compatibility with hardcoded indexes)
+        const defaults = {
+            timestamp: 0, unit: 1, uid: 2, name: 3, leaveType: 4, 
+            date: 5, time: 6, case: 7, reason: 8, proof: 9, status: 10, duration: 11
+        };
+        for (const key in defaults) {
+            if (colMap[key] === -1 || colMap[key] === undefined) {
+                colMap[key] = defaults[key];
+            }
+        }
         const leavesMap = new Map();
         let comparisonLog = [];
 
@@ -159,7 +171,7 @@ export async function getLeaves(request, env) {
                     date: r[colMap.date],
                     reason: r[colMap.reason],
                     proofUrl: r[colMap.proof],
-                    status: r[colMap.status] || 'Pending',
+                    status: r[colMap.status] || LEAVE_STATUS.PENDING,
                     cases: []
                 });
             }
@@ -203,15 +215,33 @@ export async function reviewLeave(request, env) {
         const { uid, targetUid, timestamp, action, name } = await request.json();
         const token = await getAccessToken(env);
 
-        const rows = await getSheetData(env.SHEET_ID, 'Leave_Records!A:K', token);
+        const rows = await getSheetData(env.SHEET_ID, 'Leave_Records!A:Z', token);
+        if (rows.length < 1) throw new Error('Empty Sheet');
+
+        const schema = {
+            timestamp: ['Timestamp', '時間戳記', '填寫時間'],
+            uid: ['UID', 'User ID', '使用者ID'],
+            status: ['Status', '狀態', '審核狀態'],
+            date: ['Date', '日期', '請假日期']
+        };
+        const colMap = mapHeadersToIndexes(rows[0], schema);
+        
+        // Fallbacks
+        if (colMap.timestamp === -1) colMap.timestamp = 0;
+        if (colMap.uid === -1) colMap.uid = 2;
+        if (colMap.status === -1) colMap.status = 10;
+        if (colMap.date === -1) colMap.date = 5;
+
+        const statusColLetter = colIndexToLetter(colMap.status);
+
         let updatedCount = 0;
         let leaveDate = '';
 
-        for (let i = 0; i < rows.length; i++) {
-            if (rows[i][0] === timestamp && rows[i][2] === targetUid) {
-                const status = action === 'approve' ? 'Approved' : 'Rejected';
-                await updateSheetCell(env.SHEET_ID, `Leave_Records!K${i + 1}`, status, token);
-                leaveDate = rows[i][5];
+        for (let i = 1; i < rows.length; i++) {
+            if (rows[i][colMap.timestamp] === timestamp && rows[i][colMap.uid] === targetUid) {
+                const status = action === 'approve' ? LEAVE_STATUS.APPROVED : LEAVE_STATUS.REJECTED;
+                await updateSheetCell(env.SHEET_ID, `Leave_Records!${statusColLetter}${i + 1}`, status, token);
+                leaveDate = rows[i][colMap.date];
                 updatedCount++;
             }
         }
@@ -244,15 +274,30 @@ export async function cancelLeave(request, env) {
         const { uid, timestamp } = await request.json();
         const token = await getAccessToken(env);
 
-        const rows = await getSheetData(env.SHEET_ID, 'Leave_Records!A:K', token);
+        const rows = await getSheetData(env.SHEET_ID, 'Leave_Records!A:Z', token);
+        if (rows.length < 1) throw new Error('Empty Sheet');
+
+        const schema = {
+            timestamp: ['Timestamp', '時間戳記', '填寫時間'],
+            uid: ['UID', 'User ID', '使用者ID'],
+            status: ['Status', '狀態', '審核狀態']
+        };
+        const colMap = mapHeadersToIndexes(rows[0], schema);
+
+        // Fallbacks
+        if (colMap.timestamp === -1) colMap.timestamp = 0;
+        if (colMap.uid === -1) colMap.uid = 2;
+        if (colMap.status === -1) colMap.status = 10;
+
+        const statusColLetter = colIndexToLetter(colMap.status);
         let updatedCount = 0;
 
-        for (let i = 0; i < rows.length; i++) {
-            if (rows[i][0] === timestamp && rows[i][2] === uid) {
-                if (rows[i][10] !== 'Pending') {
+        for (let i = 1; i < rows.length; i++) {
+            if (rows[i][colMap.timestamp] === timestamp && rows[i][colMap.uid] === uid) {
+                if (rows[i][colMap.status] !== LEAVE_STATUS.PENDING) {
                     return { success: false, message: '只能撤回待審核的假單' };
                 }
-                await updateSheetCell(env.SHEET_ID, `Leave_Records!K${i + 1}`, 'Cancelled', token);
+                await updateSheetCell(env.SHEET_ID, `Leave_Records!${statusColLetter}${i + 1}`, LEAVE_STATUS.CANCELLED, token);
                 updatedCount++;
             }
         }

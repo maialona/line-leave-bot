@@ -2,12 +2,13 @@
 import { getAccessToken } from '../utils/google-auth.js';
 import { getSheetData, appendSheetRows, updateSheetCell } from '../utils/google-sheets.js';
 import { sendBulletinNotification } from '../utils/line-api.js';
+import { BULLETIN_STATUS, ROLES } from '../constants/common.js';
 
 const BULLETIN_SHEET = 'Bulletin';
 
 // Helper to check permission
 function canEdit(role) {
-    return ['督導', '業務負責人'].includes(role);
+    return ROLES.SUPERVISOR_ROLES.includes(role);
 }
 
 async function getBulletins(req, env) {
@@ -51,7 +52,7 @@ async function getBulletins(req, env) {
             };
         })
         .filter(b => {
-             if (b.status === 'Deleted') return false;
+             if (b.status === BULLETIN_STATUS.DELETED) return false;
 
              // Management View: Show everything (except deleted) to admins
              if (mode === 'manage' && canEdit(userRole)) {
@@ -60,12 +61,12 @@ async function getBulletins(req, env) {
              
              // Normal View: 
              // 1. Must be 'published' (Active/published)
-             const isPublished = (b.status === 'Active' || b.status === 'published');
+             const isPublished = (b.status === BULLETIN_STATUS.ACTIVE || b.status === BULLETIN_STATUS.PUBLISHED);
              
              // 2. Scheduled Check: If 'scheduled', show ONLY if time has passed
              // Treat scheduledTime as Taiwan Time (+08:00)
              let isScheduledDue = false;
-             if (b.status === 'scheduled' && b.scheduledTime) {
+             if (b.status === BULLETIN_STATUS.SCHEDULED && b.scheduledTime) {
                  const schedTime = new Date(`${b.scheduledTime}+08:00`);
                  isScheduledDue = (schedTime <= now);
              }
@@ -101,7 +102,7 @@ async function createBulletin(req, env) {
     const timestamp = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
     
     // Default status to 'published' if not provided
-    const finalStatus = status || 'published'; 
+    const finalStatus = status || BULLETIN_STATUS.PUBLISHED; 
     const finalTarget = targetUnit || 'All';
     const finalScheduledTime = scheduledTime || '';
 
@@ -111,7 +112,7 @@ async function createBulletin(req, env) {
     await appendSheetRows(env.SHEET_ID, `${BULLETIN_SHEET}!A2:K`, [row], token);
 
     // Push Notification Logic
-    if (notify && finalStatus === 'published') {
+    if (notify && finalStatus === BULLETIN_STATUS.PUBLISHED) {
         try {
             // Need to fetch Staff List to get UIDs
             const metaResp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${env.SHEET_ID}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -211,7 +212,7 @@ async function deleteBulletin(req, env) {
     
     const actualRowIndex = rowIndex + 2;
     // Update Status to 'Deleted' (Col H)
-    await updateSheetCell(env.SHEET_ID, `${BULLETIN_SHEET}!H${actualRowIndex}`, 'Deleted', token);
+    await updateSheetCell(env.SHEET_ID, `${BULLETIN_SHEET}!H${actualRowIndex}`, BULLETIN_STATUS.DELETED, token);
 
     return { success: true, message: '公告已刪除' };
 }
@@ -222,3 +223,4 @@ export const bulletinHandlers = {
     deleteBulletin,
     signBulletin
 };
+

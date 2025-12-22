@@ -355,7 +355,7 @@
           <!-- Opening Ranking -->
           <div class="bg-white border border-green-100 rounded-xl p-4 shadow-sm">
               <h3 class="font-bold text-green-800 mb-4 flex items-center">
-                <span class="mr-2 text-xl">💰</span> 開案王 (前五名)
+                <span class="mr-2 text-xl">💰</span> 開案排行榜
               </h3>
               <div v-if="currentRanking.byOpening.length === 0" class="text-center text-gray-400 py-4">尚無資料</div>
               <div v-else class="space-y-4">
@@ -382,7 +382,7 @@
           <!-- Development Ranking -->
           <div class="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
               <h3 class="font-bold text-blue-800 mb-4 flex items-center">
-                <span class="mr-2 text-xl">📈</span> 開發王 (前五名)
+                <span class="mr-2 text-xl">📈</span> 開發王排行榜
               </h3>
               <div v-if="currentRanking.byDev.length === 0" class="text-center text-gray-400 py-4">尚無資料</div>
               <div v-else class="space-y-4">
@@ -434,7 +434,7 @@
                 <span class="mr-2">💰</span> 開案獎金
             </h4>
             <div class="text-sm text-green-900 space-y-2 leading-relaxed">
-                <p>開發或介紹進本公司服務，該個案實際服務滿八週後，即可累積一案。</p>
+                <p>開發或介紹個案公司服務，該個案實際服務滿八週後，即可累積一案。</p>
                 <p>於簽訂契約日起算至滿一年時，計算一年內的介紹和開發案件總數。</p>
                 <ul class="list-disc pl-5 font-bold space-y-1 mt-2 bg-white/50 p-2 rounded">
                     <li>第一案： 3,000元</li>
@@ -459,8 +459,8 @@
                 <p>計算已實際服務月數最多為3個月，為同仁該季額度開發獎金，該項獎金為一次性發放。</p>
                 
                 <div class="mt-3 text-xs bg-white/60 p-3 rounded space-y-2">
-                    <p><span class="font-bold border-b border-blue-300">例如 1：</span><br>11月份新增開發 1000元 × 0.1 = 100元<br>(此為11月開發獎金，12月與1月一樣方式計算總計，發放時間為2月)</p>
-                    <p><span class="font-bold border-b border-blue-300">例如 2：</span><br>1月份新增開發 1000 × 0.1 = 100元<br>(此為1月開發獎金，發放時間為2月，2月與3月開發獎金發放時間為5月)</p>
+                    <p><span class="font-bold border-b border-blue-300">例如 1：</span><br>11月份新增開發 1000元 × 0.08= 80元<br>(此為11月開發獎金，12月與1月一樣方式計算總計，發放時間為2月)</p>
+                    <p><span class="font-bold border-b border-blue-300">例如 2：</span><br>1月份新增開發 1000 × 0.08 = 80元<br>(此為1月開發獎金，發放時間為2月，2月與3月開發獎金發放時間為5月)</p>
                 </div>
             </div>
           </div>
@@ -473,6 +473,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
 import Skeleton from "./Skeleton.vue";
+import { CASE_STATUS, ROLES } from "../constants/common.js";
 
 const props = defineProps(["user"]);
 const emit = defineEmits(["back"]);
@@ -484,9 +485,7 @@ const showHelp = ref(false);
 const pendingCases = ref([]);
 
 const isSupervisor = computed(() =>
-  ["Supervisor", "督導", "Business Manager", "業務負責人"].includes(
-    props.user.role
-  )
+  ROLES.SUPERVISOR_ROLES.includes(props.user.role)
 );
 
 const form = reactive({
@@ -547,7 +546,7 @@ const fetchCases = async () => {
     });
     const data = await res.json();
     pendingCases.value = data.cases
-      ? data.cases.filter((c) => c.status === "Pending")
+      ? data.cases.filter((c) => c.status === CASE_STATUS.PENDING)
       : [];
   } catch (e) {
     console.error(e);

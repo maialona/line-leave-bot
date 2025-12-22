@@ -69,10 +69,10 @@
                  </div>
                  <div class="space-y-1">
                     <label class="block text-sm font-bold text-gray-700">狀態</label>
-                    <div class="relative">
+                     <div class="relative">
                         <select v-model="form.status" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 appearance-none">
-                             <option value="published">立即發佈</option>
-                             <option value="scheduled">排程發佈</option>
+                             <option :value="BULLETIN_STATUS.PUBLISHED">立即發佈</option>
+                             <option :value="BULLETIN_STATUS.SCHEDULED">排程發佈</option>
                         </select>
                          <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -81,7 +81,7 @@
                  </div>
              </div>
 
-             <div v-if="form.status === 'scheduled'" class="mt-2 animate-fade-in">
+             <div v-if="form.status === BULLETIN_STATUS.SCHEDULED" class="mt-2 animate-fade-in">
                  <label class="block text-sm font-bold text-gray-700 mb-1">設定發佈時間</label>
                  <input type="datetime-local" v-model="form.scheduledTime" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-3" />
              </div>
@@ -199,8 +199,8 @@
                               {{ item.category }}
                             </span>
                             <span v-if="item.priority === 'High'" class="text-[10px] bg-red-100 text-red-500 px-2 py-0.5 rounded font-bold flex-shrink-0">重要</span>
-                            <span v-if="canCreate && item.status === 'draft'" class="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-bold flex-shrink-0">草稿</span>
-                            <span v-if="canCreate && item.status === 'scheduled'" class="text-[10px] bg-lime-100 text-lime-700 px-2 py-0.5 rounded font-bold flex-shrink-0">排程 ({{ item.scheduledTime }})</span>
+                            <span v-if="canCreate && item.status === BULLETIN_STATUS.DRAFT" class="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-bold flex-shrink-0">草稿</span>
+                            <span v-if="canCreate && item.status === BULLETIN_STATUS.SCHEDULED" class="text-[10px] bg-lime-100 text-lime-700 px-2 py-0.5 rounded font-bold flex-shrink-0">排程 ({{ item.scheduledTime }})</span>
                             <span class="text-[10px] text-gray-400 flex-shrink-0">{{ formatDate(item.timestamp) }}</span>
                          </div>
                          <!-- Title -->
@@ -254,6 +254,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import Skeleton from "./Skeleton.vue";
+import { BULLETIN_STATUS, ROLES } from "../constants/common.js";
 
 const props = defineProps(['user', 'units']);
 const emit = defineEmits(['back']);
@@ -280,7 +281,7 @@ const form = ref({
     category: '行政',
     priority: 'Normal',
     targetUnit: 'All',
-    status: 'published',
+    status: BULLETIN_STATUS.PUBLISHED,
     scheduledTime: '',
     notify: false
 });
@@ -295,7 +296,7 @@ const categories = [
 ];
 
 const canCreate = computed(() => {
-    return ['督導', '業務負責人'].includes(props.user.role);
+    return ROLES.SUPERVISOR_ROLES.includes(props.user.role);
 });
 
 const filteredBulletins = computed(() => {
@@ -348,7 +349,7 @@ async function submitBulletin() {
         if (data.success) {
             alert('發佈成功');
             isCreating.value = false; // Go back to list
-            form.value = { title: '', content: '', category: '行政', priority: 'Normal', targetUnit: 'All', status: 'published', scheduledTime: '', notify: false };
+            form.value = { title: '', content: '', category: '行政', priority: 'Normal', targetUnit: 'All', status: BULLETIN_STATUS.PUBLISHED, scheduledTime: '', notify: false };
             fetchBulletins();
         } else {
             alert(data.message);

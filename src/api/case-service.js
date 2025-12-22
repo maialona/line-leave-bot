@@ -1,6 +1,7 @@
 import { getAccessToken } from '../utils/google-auth.js';
-import { getSheetData, updateSheetCell, appendSheetRows } from '../utils/google-sheets.js';
+import { getSheetData, updateSheetCell, appendSheetRows, mapHeadersToIndexes, colIndexToLetter } from '../utils/google-sheets.js';
 import { sendCaseApprovalNotification } from '../utils/line-api.js';
+import { CASE_STATUS, ROLES } from '../constants/common.js';
 
 export async function submitCase(request, env) {
     try {
@@ -19,7 +20,7 @@ export async function submitCase(request, env) {
             form.applyTypes.join(', '), // Col H
             form.devItem || '',     // Col I
             form.devCount || '',    // Col J
-            'Pending',              // Col K: Status
+            CASE_STATUS.PENDING,    // Col K: Status
             '',                     // Col L: Reviewer
             ''                      // Col M: ReviewTime
         ];
@@ -56,34 +57,54 @@ export async function getCases(request, env) {
 
         const role = user[2];
         const unit = user[0];
-        const isReviewer = ['Supervisor', '督導', 'Business Manager', '業務負責人'].includes(role);
+        const isReviewer = ROLES.SUPERVISOR_ROLES.includes(role);
 
         // 2. Get Case Applications
-        const sheetExists = metaData.sheets.some(s => s.properties.title === 'Case_Applications');
+        // 2. Get Case Applications
+        const meta2 = await fetch(metaUrl, { headers: { Authorization: `Bearer ${token}` } });
+        const metaData2 = await meta2.json();
+        const sheetExists = metaData2.sheets.some(s => s.properties.title === 'Case_Applications');
         if (!sheetExists) return { success: true, cases: [] };
 
-        const allRows = await getSheetData(env.SHEET_ID, 'Case_Applications!A2:M', token);
+        const allRows = await getSheetData(env.SHEET_ID, 'Case_Applications!A1:Z', token); // Header included
+        if (allRows.length < 2) return { success: true, cases: [] };
 
+        const header = allRows[0];
+        const rows = allRows.slice(1);
+
+        const schema = {
+             timestamp: ['Timestamp', '時間戳記', '填寫時間'],
+             staffId: ['Staff ID', '員工編號'],
+             applicant: ['Applicant', '申請人'],
+             agency: ['Agency', '機構', '所屬機構'],
+             area: ['Area', '區域', '個案區域'],
+             caseName: ['Case Name', '個案姓名'],
+             gender: ['Gender', '性別'],
+             applyTypes: ['Apply Types', '申請類別'],
+             devItem: ['Dev Item', '開發項目'],
+             devCount: ['Dev Count', '數量'],
+             status: ['Status', '狀態', '審核狀態'],
+             reviewer: ['Reviewer', '審核人'],
+             reviewTime: ['Review Time', '審核時間']
+        };
+        const colMap = mapHeadersToIndexes(header, schema);
+        
+        // Fallbacks
+        if (colMap.agency === -1) colMap.agency = 3;
+        if (colMap.status === -1) colMap.status = 10;
+        
         // Filter Logic
         let cases = [];
-        allRows.forEach(row => {
-            const rowUnit = row[3]; // Agency Col D = Index 3 (Wait, A=0, B=1, C=2, D=3. Correct)
-            const rowStatus = row[10] || 'Pending';
+        rows.forEach(row => {
+            const rowUnit = row[colMap.agency]; 
+            const rowStatus = row[colMap.status] || CASE_STATUS.PENDING;
 
-            // If Reviewer -> See all in Unit (Pending mainly, or history?)
-            // Let's return all for history, filtered by frontend
             if (isReviewer) {
                 if (rowUnit === unit) {
-                    cases.push(mapRowToCase(row));
+                    cases.push(mapRowToCase(row, colMap));
                 }
             } else {
-                // Staff -> See own submissions? (Optional, user didn't request but good to have)
-                // Need to store UID in Case Sheet? 
-                // We didn't store UID in submitCase rowData!! 
-                // Wait, submitCase uses form.staffId (Col B). 
-                // But we usually track by UID. 
-                // Let's assume for now Staff only sees what they submitted if we have a way to identify.
-                // Actually, for this iteration, let's focus on Reviewer view.
+                 // Staff view logic (omitted as per original)
             }
         });
 
@@ -94,21 +115,25 @@ export async function getCases(request, env) {
     }
 }
 
-function mapRowToCase(row) {
+function mapRowToCase(row, colMap) {
+    // Helper to get safely
+    const get = (key, defaultVal) => (colMap[key] >= 0 ? row[colMap[key]] : (row[defaultVal] || ''));
+    
+    // Fallback defaults based on original hardcoded indexes
     return {
-        timestamp: row[0],
-        staffId: row[1],
-        applicant: row[2],
-        agency: row[3],
-        area: row[4],
-        caseName: row[5],
-        gender: row[6],
-        applyTypes: row[7],
-        devItem: row[8],
-        devCount: row[9],
-        status: row[10],
-        reviewer: row[11],
-        reviewTime: row[12]
+        timestamp: get('timestamp', 0),
+        staffId: get('staffId', 1),
+        applicant: get('applicant', 2),
+        agency: get('agency', 3),
+        area: get('area', 4),
+        caseName: get('caseName', 5),
+        gender: get('gender', 6),
+        applyTypes: get('applyTypes', 7),
+        devItem: get('devItem', 8),
+        devCount: get('devCount', 9),
+        status: get('status', 10),
+        reviewer: get('reviewer', 11),
+        reviewTime: get('reviewTime', 12)
     };
 }
 
@@ -122,30 +147,53 @@ export async function reviewCase(request, env) {
 
         const token = await getAccessToken(env);
 
-        // Find Row
-        const rows = await getSheetData(env.SHEET_ID, 'Case_Applications!A:A', token); // Get timestamps
+        // Find Row - Fetch A:Z
+        const rows = await getSheetData(env.SHEET_ID, 'Case_Applications!A:Z', token); 
+        if (rows.length < 1) throw new Error('Sheet Empty');
+        
+        const header = rows[0];
+        const schema = {
+             timestamp: ['Timestamp', '時間戳記', '填寫時間'],
+             status: ['Status', '狀態', '審核狀態'],
+             reviewer: ['Reviewer', '審核人'],
+             reviewTime: ['Review Time', '審核時間']
+        };
+        const colMap = mapHeadersToIndexes(header, schema);
+        if (colMap.timestamp === -1) colMap.timestamp = 0;
+        if (colMap.status === -1) colMap.status = 10;
+        if (colMap.reviewer === -1) colMap.reviewer = 11;
+        if (colMap.reviewTime === -1) colMap.reviewTime = 12;
+
         let rowIndex = -1;
-        for (let i = 0; i < rows.length; i++) {
-            if (rows[i][0] === timestamp) {
+        for (let i = 1; i < rows.length; i++) {
+            if (rows[i][colMap.timestamp] === timestamp) {
                 rowIndex = i + 1;
                 break;
             }
         }
 
         if (rowIndex > -1) {
-            const status = action === 'approve' ? 'Approved' : 'Rejected';
+            const status = action === 'approve' ? CASE_STATUS.APPROVED : CASE_STATUS.REJECTED;
             const time = new Date().toISOString();
 
-            // Update Status (Col K -> 11), Reviewer (L -> 12), Time (M -> 13)
-            // Range K{row}:M{row}
-            const updateRange = `Case_Applications!K${rowIndex}:M${rowIndex}`;
-            const url = `https://sheets.googleapis.com/v4/spreadsheets/${env.SHEET_ID}/values/${encodeURIComponent(updateRange)}?valueInputOption=USER_ENTERED`;
-
-            await fetch(url, {
-                method: 'PUT',
-                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ values: [[status, reviewerName, time]] })
-            });
+            // Status Cols
+            const statusCol = colIndexToLetter(colMap.status);
+            const reviewerCol = colIndexToLetter(colMap.reviewer);
+            const reviewTimeCol = colIndexToLetter(colMap.reviewTime);
+            
+            if (colMap.reviewer === colMap.status + 1 && colMap.reviewTime === colMap.reviewer + 1) {
+                 const updateRange = `Case_Applications!${statusCol}${rowIndex}:${reviewTimeCol}${rowIndex}`;
+                 const url = `https://sheets.googleapis.com/v4/spreadsheets/${env.SHEET_ID}/values/${encodeURIComponent(updateRange)}?valueInputOption=USER_ENTERED`;
+                 await fetch(url, {
+                     method: 'PUT',
+                     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ values: [[status, reviewerName, time]] })
+                 });
+            } else {
+                 await updateSheetCell(env.SHEET_ID, `Case_Applications!${statusCol}${rowIndex}`, status, token);
+                 await updateSheetCell(env.SHEET_ID, `Case_Applications!${reviewerCol}${rowIndex}`, reviewerName, token);
+                 await updateSheetCell(env.SHEET_ID, `Case_Applications!${reviewTimeCol}${rowIndex}`, time, token);
+            }
 
             return { success: true };
         }
@@ -180,17 +228,34 @@ export async function getCaseRanking(request, env) {
         });
 
         // 2. Get All Cases
-        const allRows = await getSheetData(env.SHEET_ID, 'Case_Applications!A2:K', token);
+        const allRows = await getSheetData(env.SHEET_ID, 'Case_Applications!A1:K', token);
+        if (allRows.length < 2) return { success: true, rankings: { staff: { byOpening: [], byDev: [] }, supervisor: { byOpening: [], byDev: [] } } };
+
+        const header = allRows[0];
+        const rows = allRows.slice(1);
         
+        const schema = {
+            applicant: ['Applicant', '申請人', '個案申請人'],
+            applyTypes: ['Apply Types', '申請類別'],
+            devCount: ['Dev Count', '數量'],
+            status: ['Status', '狀態']
+        };
+        const colMap = mapHeadersToIndexes(header, schema);
+        // Defaults
+        if (colMap.applicant === -1) colMap.applicant = 2;
+        if (colMap.applyTypes === -1) colMap.applyTypes = 7;
+        if (colMap.devCount === -1) colMap.devCount = 9;
+        if (colMap.status === -1) colMap.status = 10;
+
         // 3. Aggregate
-        const stats = {}; // { name: { opening: 0, development: 0, role: '', unit: '' } }
+        const stats = {}; 
 
-        allRows.forEach(row => {
-            const status = row[10]; // Col K: Status
-            if (status !== 'Approved') return; // Only count Approved? Or all submitted? Usually Ranking counts Approved. Let's assume Approved.
+        rows.forEach(row => {
+            const status = row[colMap.status]; 
+            if (status !== CASE_STATUS.APPROVED) return; 
 
-            const applicantName = row[2]; // Col C: Applicant Name
-            const applyTypes = row[7] || ''; // Col H: Apply Types (comma sep)
+            const applicantName = row[colMap.applicant]; 
+            const applyTypes = row[colMap.applyTypes] || ''; 
             
             if (!stats[applicantName]) {
                 const staff = staffMap[applicantName] || {};
@@ -204,10 +269,7 @@ export async function getCaseRanking(request, env) {
             }
 
             if (applyTypes.includes('開案')) stats[applicantName].opening++;
-            if (applyTypes.includes('開發')) stats[applicantName].development += parseInt(row[9] || 0) || 1; // Col J: DevCount? Or just count 1? "開發" usually has count. Col J is DevCount.
-            // Wait, logic check: row[9] is devCount? 
-            // In submitCase: rowData includes form.devCount at index 9 (Col J).
-            // So development score should probably sum devCount.
+            if (applyTypes.includes('開發')) stats[applicantName].development += parseInt(row[colMap.devCount] || 0) || 1; 
         });
 
         // 4. Group by Role
@@ -215,7 +277,7 @@ export async function getCaseRanking(request, env) {
         const supervisorList = [];
 
         Object.values(stats).forEach(s => {
-            const isSupervisor = ['Supervisor', '督導', 'Business Manager', '業務負責人'].includes(s.role);
+            const isSupervisor = ROLES.SUPERVISOR_ROLES.includes(s.role);
             if (isSupervisor) supervisorList.push(s);
             else staffList.push(s);
         });
@@ -255,8 +317,29 @@ export async function checkPendingCaseReminders(env) {
         const token = await getAccessToken(env);
 
         // 1. Get All Cases
-        const allRows = await getSheetData(env.SHEET_ID, 'Case_Applications!A2:M', token);
-        if (!allRows || allRows.length === 0) return;
+        const allRows = await getSheetData(env.SHEET_ID, 'Case_Applications!A1:M', token); // Header
+        if (!allRows || allRows.length < 2) return;
+
+        const header = allRows[0];
+        const rows = allRows.slice(1);
+
+        const schema = {
+            timestamp: ['Timestamp', '時間戳記', '填寫時間'],
+            agency: ['Agency', '機構', '所屬機構'],
+            applyTypes: ['Apply Types', '申請類別'],
+            status: ['Status', '狀態', '審核狀態'],
+            caseName: ['Case Name', '個案姓名'],
+            applicant: ['Applicant', '申請人']
+        };
+        const colMap = mapHeadersToIndexes(header, schema);
+        
+        // Defaults
+        if (colMap.timestamp === -1) colMap.timestamp = 0;
+        if (colMap.agency === -1) colMap.agency = 3;
+        if (colMap.applyTypes === -1) colMap.applyTypes = 7;
+        if (colMap.status === -1) colMap.status = 10;
+        if (colMap.caseName === -1) colMap.caseName = 5;
+        if (colMap.applicant === -1) colMap.applicant = 2;
 
         // 2. Filter Targets
         const today = new Date();
@@ -264,15 +347,15 @@ export async function checkPendingCaseReminders(env) {
 
         const reminders = [];
 
-        allRows.forEach(row => {
-            const timestamp = row[0];
-            const unit = row[3]; // Agency Col D
-            const applyTypes = row[7];
-            const status = row[10] || 'Pending';
-            const caseName = row[5];
-            const applicant = row[2];
+        rows.forEach(row => {
+            const timestamp = row[colMap.timestamp];
+            const unit = row[colMap.agency]; 
+            const applyTypes = row[colMap.applyTypes] || ''; // Handle potential undefined if empty
+            const status = row[colMap.status] || CASE_STATUS.PENDING;
+            const caseName = row[colMap.caseName];
+            const applicant = row[colMap.applicant];
 
-            if (status === 'Pending' && applyTypes.includes('開案')) {
+            if (status === CASE_STATUS.PENDING && applyTypes.includes('開案')) {
                 const appDate = new Date(timestamp);
                 appDate.setHours(0, 0, 0, 0);
 
@@ -304,7 +387,7 @@ export async function checkPendingCaseReminders(env) {
         // 4. Send Notifications Grouped by Unit (Optimization)
         // Creating a map of Unit -> Reviewers
         const unitReviewers = {};
-        const targetRoles = ['Supervisor', '督導', 'Business Manager', '業務負責人'];
+        const targetRoles = ROLES.SUPERVISOR_ROLES;
 
         staffRows.forEach(row => {
             const u = row[0];
