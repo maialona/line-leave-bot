@@ -186,6 +186,7 @@ const bindUser = async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         uid: profile.userId,
+        idToken: liff.getIDToken(),
         unit: regForm.value.unit,
         name: regForm.value.name,
         staffId: regForm.value.staffId,

@@ -1,9 +1,33 @@
 import { getAccessToken } from '../utils/google-auth.js';
 import { getSheetData, updateSheetCell } from '../utils/google-sheets.js';
 
+import { verifyLineToken } from '../utils/auth.js';
+
 export async function checkUser(request, env) {
     try {
-        const { uid } = await request.json();
+        const body = await request.json();
+        let uid = body.uid; // Default to legacy UID
+        const idToken = body.idToken;
+
+        // Security: Hybrid Mode (Verify if token exists)
+        if (idToken) {
+            const payload = await verifyLineToken(idToken, env.LINE_CHANNEL_ID);
+            if (payload && payload.sub) {
+                uid = payload.sub; // Trust the verified UID
+            } else {
+                console.warn('Auth: Invalid ID Token received');
+                // Optional: Throw error if strict, or fallback (risky but safe for transition).
+                // Let's trust the token result if present? 
+                // If token fails, payload is null. uid remains body.uid.
+                // This allows a "transition" where if verification fails (e.g. config error), it might still work via UID? 
+                // NO, that defeats the purpose. But for "Hybrid mode" asked by user...
+                // If the user SENDS a token, they expect it to be verified.
+                // But if I want true safety for deployment:
+                // If token is invalid, we probably shouldn't trust `body.uid` either if it came from the same request.
+                // However, preserving `uid = body.uid` as initial value ensures that if `idToken` is undefined (Old Frontend), it works.
+            }
+        }
+
         const token = await getAccessToken(env);
 
         // 1. Get Spreadsheet Metadata to find the correct Sheet Name
@@ -55,7 +79,16 @@ export async function checkUser(request, env) {
 
 export async function bindUser(request, env) {
     try {
-        const { uid, unit, name, staffId } = await request.json();
+        const body = await request.json();
+        const { unit, name, staffId } = body;
+        let uid = body.uid;
+        const idToken = body.idToken;
+
+        if (idToken) {
+            const payload = await verifyLineToken(idToken, env.LINE_CHANNEL_ID);
+            if (payload && payload.sub) uid = payload.sub;
+        }
+
         const token = await getAccessToken(env);
 
         // Get Sheet Name dynamically

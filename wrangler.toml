@@ -13,3 +13,6 @@ crons = ["0 1 * * *"] # 1:00 AM UTC = 9:00 AM Taiwan
 # SHEET_ID = "..."
 # DRIVE_FOLDER_ID = "..."
 # LINE_CHANNEL_ACCESS_TOKEN = "..."
+[vars]
+LINE_CHANNEL_ID = "2008645610"
+

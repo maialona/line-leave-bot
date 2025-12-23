@@ -110,10 +110,14 @@ const checkUserStatus = async () => {
     const profile = await liff.getProfile();
     
     // Use the correct API endpoint '/api/check-user'
+    const idToken = liff.getIDToken();
     const res = await fetch("/api/check-user", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid: profile.userId }),
+      body: JSON.stringify({ 
+          uid: profile.userId,
+          idToken: idToken 
+      }),
     });
 
     if (res.ok) {
