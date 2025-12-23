@@ -31,8 +31,24 @@
       </button>
     </div>
 
+    <!-- Tabs -->
+    <div class="flex space-x-2 mb-4 px-1">
+      <button
+        @click="activeTab = 'form'"
+        :class="['flex-1 py-2 rounded-lg text-sm font-bold transition-colors', activeTab === 'form' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200']"
+      >
+        通報表單
+      </button>
+      <button
+        @click="activeTab = 'records'"
+        :class="['flex-1 py-2 rounded-lg text-sm font-bold transition-colors', activeTab === 'records' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200']"
+      >
+        通報紀錄
+      </button>
+    </div>
+
     <!-- Form Content -->
-    <div class="flex-1 overflow-y-auto space-y-4 px-1 pb-4">
+    <div v-show="activeTab === 'form'" class="flex-1 overflow-y-auto space-y-4 px-1 pb-4">
       
       <!-- Assigning Supervisor -->
       <div>
@@ -43,6 +59,20 @@
           placeholder="請輸入姓名"
           class="w-full rounded-xl border-gray-300 py-3 px-4 shadow-sm border focus:ring-red-500 focus:border-red-500"
         />
+      </div>
+
+      <!-- Agency Selection -->
+      <div>
+        <label class="block text-sm font-bold text-gray-700 mb-1">居服員所屬機構</label>
+        <select
+          v-model="form.agency"
+          class="w-full rounded-xl border-gray-300 py-3 px-4 shadow-sm border focus:ring-red-500 focus:border-red-500 bg-white"
+        >
+          <option disabled value="">請選擇機構</option>
+          <option v-for="unit in units" :key="unit" :value="unit">
+            {{ unit }}
+          </option>
+        </select>
       </div>
 
        <!-- Assigned Attendant -->
@@ -99,18 +129,38 @@
           class="w-full rounded-xl border-gray-300 py-3 px-4 shadow-sm border focus:ring-red-500 focus:border-red-500 resize-none"
         ></textarea>
       </div>
-      
+
+      <!-- Footer Action Form -->
+      <div class="mt-4 pt-2 border-t border-gray-100">
+          <button
+            @click="submit"
+            :disabled="submitting"
+            class="w-full bg-red-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-red-700 transform active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ submitting ? "提交中..." : "送出通報" }}
+          </button>
+      </div>
     </div>
 
-    <!-- Footer Action -->
-    <div class="mt-4 pt-2 border-t border-gray-100">
-        <button
-          @click="submit"
-          :disabled="submitting"
-          class="w-full bg-red-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-red-700 transform active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {{ submitting ? "提交中..." : "送出通報" }}
-        </button>
+    <!-- Records Content -->
+    <div v-show="activeTab === 'records'" class="flex-1 overflow-y-auto px-1 pb-4">
+        <div v-if="loadingStats" class="flex justify-center py-8 text-gray-500">
+            <span class="animate-pulse">載入中...</span>
+        </div>
+        <div v-else-if="records.length === 0" class="text-center py-8 text-gray-400">
+            尚無通報紀錄
+        </div>
+        <div v-else class="space-y-3">
+            <div v-for="(rec, index) in records" :key="index" class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+                <div>
+                   <div class="text-sm text-gray-500 mb-1">{{ rec.agency }}</div>
+                   <div class="font-bold text-gray-800 text-lg">{{ rec.attendant }}</div>
+                </div>
+                <div class="bg-red-50 text-red-600 font-bold px-4 py-2 rounded-lg text-lg">
+                    {{ rec.count }} <span class="text-xs font-normal">次</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Info Modal -->
@@ -137,7 +187,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useUserStore } from "../stores/user.js";
 import { useToast } from "../composables/useToast.js";
 
@@ -145,6 +195,11 @@ const emit = defineEmits(["back"]);
 const store = useUserStore();
 const { addToast } = useToast();
 const user = computed(() => store.user);
+const units = computed(() => store.units);
+
+const activeTab = ref('form');
+const records = ref([]);
+const loadingStats = ref(false);
 
 const submitting = ref(false);
 const showInfo = ref(false);
@@ -158,6 +213,7 @@ const options = [
 
 const form = reactive({
     supervisorName: "",
+    agency: "",
     attendantName: "",
     refusalDate: new Date().toISOString().split("T")[0],
     assessments: [],
@@ -171,7 +227,7 @@ onMounted(() => {
 });
 
 const submit = async () => {
-    if (!form.supervisorName || !form.attendantName || !form.reason) {
+    if (!form.supervisorName || !form.agency || !form.attendantName || !form.reason) {
         addToast("請填寫完整資訊", "warning");
         return;
     }
@@ -197,6 +253,32 @@ const submit = async () => {
         submitting.value = false;
     }
 };
+
+const loadRecords = async () => {
+    loadingStats.value = true;
+    try {
+        const res = await fetch("/api/get-refusal-stats", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+        });
+        const data = await res.json();
+        if (data.success) {
+            records.value = data.stats;
+        } else {
+            console.error(data.message);
+        }
+    } catch (e) {
+        console.error("Load Stats Error", e);
+    } finally {
+        loadingStats.value = false;
+    }
+};
+
+watch(activeTab, (newTab) => {
+    if (newTab === 'records') {
+        loadRecords();
+    }
+});
 
 </script>
 
