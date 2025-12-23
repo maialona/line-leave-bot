@@ -125,6 +125,9 @@
 <script setup>
 import { computed } from 'vue';
 import { LEAVE_TYPES } from '../constants/common.js';
+import { useToast } from '../composables/useToast.js';
+
+const { addToast } = useToast();
 
 const props = defineProps({
   form: Object,
@@ -138,7 +141,7 @@ const leaveTypes = LEAVE_TYPES;
 const handleSubmit = () => {
   console.log("Submitting Leave Form. Cases:", props.form.cases);
   if (!props.form.cases || props.form.cases.length === 0) {
-    alert('無法送出: 請至少新增一個受影響個案 (按 + 新增)');
+    addToast('無法送出: 請至少新增一個受影響個案 (按 + 新增)', 'warning');
     return;
   }
   // Check if all cases have name/time filled?
@@ -146,7 +149,7 @@ const handleSubmit = () => {
   // Often users click "Add" but leave it empty.
   const incompleteCase = props.form.cases.some(c => !c.caseName || !c.startTime || !c.endTime);
   if (incompleteCase) {
-    alert('請完整填寫受影響個案資訊 (姓名、開始時間、結束時間)');
+    addToast('請完整填寫受影響個案資訊 (姓名、開始時間、結束時間)', 'warning');
     return;
   }
   emit('submit');

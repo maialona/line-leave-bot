@@ -1,5 +1,6 @@
 <template>
   <div class="fixed inset-0 h-[100dvh] w-full bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-4 overflow-hidden overscroll-none">
+    <ToastContainer />
     <!-- Loading State -->
     <div
       v-if="loading"
@@ -63,6 +64,8 @@
   </div>
 </template>
 
+
+
 <script setup>
 import { ref, onMounted } from "vue";
 import liff from "@line/liff";
@@ -72,6 +75,10 @@ import LeaveView from "./components/LeaveView.vue";
 import WhisperView from "./components/WhisperView.vue";
 import DevApplyView from "./components/DevApplyView.vue";
 import BulletinView from "./components/BulletinView.vue";
+import ToastContainer from "./components/ToastContainer.vue";
+import { useToast } from "./composables/useToast.js";
+
+const { addToast } = useToast();
 
 // State
 const loading = ref(true);
@@ -79,7 +86,7 @@ const currentView = ref("landing");
 const user = ref(null);
 
 // LIFF ID (From project context)
-const LIFF_ID = "2008645610-0MezRE9Z";
+const LIFF_ID = import.meta.env.VITE_LIFF_ID;
 
 const units = ref([]);
 
@@ -94,6 +101,7 @@ onMounted(async () => {
     await checkUserStatus();
   } catch (err) {
     console.error("LIFF Init Error:", err);
+    addToast("LIFF 初始化失敗: " + err.message, "error");
   }
 });
 
@@ -139,10 +147,12 @@ const checkUserStatus = async () => {
       }
     } else {
       console.error("Check status failed");
+      addToast("檢查使用者狀態失敗", "error");
       currentView.value = "landing"; 
     }
   } catch (e) {
     console.error("API Error:", e);
+    addToast("API 連線錯誤: " + e.message, "error");
     currentView.value = "landing";
   } finally {
     loading.value = false;
@@ -155,6 +165,7 @@ const handleUserBound = (userData) => {
   // UX: Go to menu immediately after binding is fine, OR show welcome. 
   // Let's go to menu to save a click for new users.
   currentView.value = "menu";
+
 };
 
 const handleSwitchUser = (profileData) => {
@@ -165,6 +176,7 @@ const handleSwitchUser = (profileData) => {
   };
   currentView.value = "landing"; // Ensure we stay on landing or go to menu? Let's stay on landing (welcome screen) to confirm.
   // Actually, usually user wants to go to menu. But Welcome screen is safer.
+  addToast("已切換身分", "info");
 };
 
 const handleNavigation = (view) => {

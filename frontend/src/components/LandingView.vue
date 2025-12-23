@@ -150,6 +150,9 @@
 <script setup>
 import { ref } from "vue";
 import liff from "@line/liff";
+import { useToast } from "../composables/useToast.js";
+
+const { addToast } = useToast();
 
 const props = defineProps(["user", "units"]); 
 const emit = defineEmits(["user-bound", "enter", "retry", "switch-user"]);
@@ -171,7 +174,7 @@ const regForm = ref({
 
 const bindUser = async () => {
   if (!regForm.value.unit || !regForm.value.name || !regForm.value.staffId) {
-    alert("請填寫完整資料");
+    addToast("請填寫完整資料", "warning");
     return;
   }
 
@@ -191,7 +194,7 @@ const bindUser = async () => {
 
     const data = await res.json();
     if (data.success) {
-      alert("綁定成功！歡迎使用");
+      addToast("綁定成功！歡迎使用", "success");
       emit("user-bound", {
         uid: profile.userId,
         name: regForm.value.name,
@@ -199,11 +202,11 @@ const bindUser = async () => {
         role: data.role || "居服員", 
       });
     } else {
-      alert(data.message || "綁定失敗");
+      addToast(data.message || "綁定失敗", "error");
     }
   } catch (e) {
     console.error("Bind Error:", e);
-    alert("發生錯誤，請稍後再試");
+    addToast("發生錯誤，請稍後再試", "error");
   } finally {
     submitting.value = false;
   }

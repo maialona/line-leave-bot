@@ -132,8 +132,6 @@
 <script setup>
 defineProps(["user"]);
 defineEmits(["navigate", "back"]);
-
-const alert = (msg) => window.alert(msg);
 </script>
 
 <style scoped>

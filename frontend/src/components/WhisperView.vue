@@ -331,6 +331,9 @@
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick, watch } from "vue";
 import Skeleton from "./Skeleton.vue";
+import { useToast } from "../composables/useToast.js";
+
+const { addToast } = useToast();
 
 const props = defineProps(["user"]);
 const emit = defineEmits(["back"]);
@@ -466,7 +469,7 @@ const startCreate = async () => {
 
 const submit = async () => {
   if (!form.recipientUid || !form.subject || !form.content)
-    return alert("請填寫完整");
+    return addToast("請填寫完整", "warning");
   const r = recipients.value.find((x) => x.uid === form.recipientUid);
   form.recipientName = r ? r.name : "Unknown";
 
@@ -482,14 +485,15 @@ const submit = async () => {
         unit: props.user.unit,
       }),
     });
-    if ((await res.json()).success) {
-      alert("已送出");
+    const result = await res.json();
+    if (result.success) {
+      addToast("已送出", "success");
       Object.assign(form, { recipientUid: "", subject: "", content: "", isAnonymous: false, category: "行政" });
       mode.value = "list";
       fetchWhispers();
-    } else alert("失敗");
+    } else addToast("失敗", "error");
   } catch (e) {
-    alert("Error");
+    addToast("Error", "error");
   }
   submitting.value = false;
 };
@@ -574,10 +578,10 @@ const sendReply = async () => {
       replyText.value = "";
       await scrollToBottom();
     } else {
-        alert("發送失敗: " + result.message);
+        addToast("發送失敗: " + result.message, "error");
     }
   } catch (e) {
-    alert("Error: " + e.message);
+    addToast("Error: " + e.message, "error");
   }
   submitting.value = false;
 };
@@ -592,12 +596,12 @@ const deleteWhisper = async () => {
       body: JSON.stringify({ id: currentMsg.value.id }),
     });
     if ((await res.json()).success) {
-      alert("已刪除");
+      addToast("已刪除", "success");
       list.value = list.value.filter((m) => m.id !== currentMsg.value.id);
       mode.value = "list";
     }
   } catch (e) {
-    alert("Error");
+    addToast("Error", "error");
   }
   submitting.value = false;
 };

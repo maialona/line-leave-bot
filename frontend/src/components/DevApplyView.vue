@@ -714,6 +714,9 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import Skeleton from "./Skeleton.vue";
 import { CASE_STATUS, ROLES } from "../constants/common.js";
+import { useToast } from "../composables/useToast.js";
+
+const { addToast } = useToast();
 
 const props = defineProps(["user"]);
 const emit = defineEmits(["back"]);
@@ -748,7 +751,7 @@ const submit = async () => {
     !form.gender ||
     !form.applyType
   ) {
-    return alert("請填寫完整");
+    return addToast("請填寫完整", "warning");
   }
   submitting.value = true;
   try {
@@ -763,7 +766,7 @@ const submit = async () => {
       }),
     });
     if ((await res.json()).success) {
-      alert("申請已送出");
+      addToast("申請已送出", "success");
       Object.assign(form, {
         agency: "",
         area: "",
@@ -771,9 +774,9 @@ const submit = async () => {
         gender: "",
         applyType: "",
       });
-    } else alert("失敗");
+    } else addToast("失敗", "error");
   } catch (e) {
-    alert("Error");
+    addToast("Error", "error");
   }
   submitting.value = false;
 };

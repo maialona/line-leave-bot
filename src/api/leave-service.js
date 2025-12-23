@@ -53,9 +53,15 @@ export async function submitLeave(request, env) {
         }
 
         await appendSheetRows(env.SHEET_ID, 'Leave_Records', rowsToAdd, token);
+        console.log("Leave recorded:", timestamp);
 
-        // Send Notification
-        await sendApprovalNotification(form, proofUrl, timestamp, env, token);
+        // Send Notification (Non-blocking)
+        try {
+            await sendApprovalNotification(form, proofUrl, timestamp, env, token);
+        } catch (notifyError) {
+            console.error("Failed to send notification:", notifyError);
+            // We do NOT throw here, so the user still gets a success response
+        }
 
         return { success: true };
     } catch (e) {

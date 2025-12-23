@@ -255,6 +255,9 @@
 import { ref, computed, onMounted } from 'vue';
 import Skeleton from "./Skeleton.vue";
 import { BULLETIN_STATUS, ROLES } from "../constants/common.js";
+import { useToast } from "../composables/useToast.js";
+
+const { addToast } = useToast();
 
 const props = defineProps(['user', 'units']);
 const emit = defineEmits(['back']);
@@ -333,7 +336,7 @@ async function fetchBulletins() {
 }
 
 async function submitBulletin() {
-    if (!form.value.title || !form.value.content) return alert('請填寫完整');
+    if (!form.value.title || !form.value.content) return addToast('請填寫完整', 'warning');
     
     submitting.value = true;
     try {
@@ -347,15 +350,15 @@ async function submitBulletin() {
         });
         const data = await res.json();
         if (data.success) {
-            alert('發佈成功');
+            addToast('發佈成功', 'success');
             isCreating.value = false; // Go back to list
             form.value = { title: '', content: '', category: '行政', priority: 'Normal', targetUnit: 'All', status: BULLETIN_STATUS.PUBLISHED, scheduledTime: '', notify: false };
             fetchBulletins();
         } else {
-            alert(data.message);
+            addToast(data.message, 'error');
         }
     } catch(e) {
-        alert('Error');
+        addToast('Error', 'error');
     } finally {
         submitting.value = false;
     }
@@ -374,8 +377,8 @@ async function deleteItem(id) {
         });
         const data = await res.json();
         if (data.success) fetchBulletins();
-        else alert(data.message);
-    } catch(e) { alert('Delete Error'); }
+        else addToast(data.message, 'error');
+    } catch(e) { addToast('Delete Error', 'error'); }
 }
 
 function getCategoryColor(cat) {

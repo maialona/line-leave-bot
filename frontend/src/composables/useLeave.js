@@ -1,11 +1,13 @@
 import { ref, reactive, computed } from "vue";
 import { fetchLeavesApi, submitLeaveApi, reviewLeaveApi, cancelLeaveApi } from "../api/leave.js";
 import { LEAVE_STATUS, LEAVE_TYPES, ROLES } from "../constants/common.js";
+import { useToast } from "./useToast.js";
 
 export function useLeave(user) {
   const loading = ref(false);
   const submitting = ref(false);
   const allLeaves = ref([]);
+  const { addToast } = useToast();
 
   const isSupervisor = computed(() =>
     ROLES.SUPERVISOR_ROLES.includes(user.role)
@@ -43,19 +45,19 @@ export function useLeave(user) {
       ["病假", "喪假", "婚假"].includes(leaveForm.leaveType) &&
       !leaveForm.proofBase66
     ) {
-      alert("請上傳證明");
+      addToast("請上傳證明", "warning");
       return false;
     }
 
     // MANDATORY CASE VALIDATION
     console.log("Inside useLeave submit. Cases:", leaveForm.cases);
     if (!leaveForm.cases || leaveForm.cases.length === 0) {
-      alert("系統阻擋: 請至少填寫一個受影響個案");
+      addToast("系統阻擋: 請至少填寫一個受影響個案", "warning");
       return false;
     }
     const incompleteCase = leaveForm.cases.some(c => !c.caseName || !c.startTime || !c.endTime);
     if (incompleteCase) {
-      alert("請完整填寫受影響個案資訊 (姓名、開始時間、結束時間)");
+      addToast("請完整填寫受影響個案資訊 (姓名、開始時間、結束時間)", "warning");
       return false;
     }
     submitting.value = true;
@@ -69,7 +71,7 @@ export function useLeave(user) {
         duration: "0",
       });
       if (data.success) {
-        alert("提交成功");
+        addToast("提交成功", "success");
         getLeaves();
         // Reset Form
         Object.assign(leaveForm, {
@@ -84,11 +86,11 @@ export function useLeave(user) {
         });
         return true;
       } else {
-        alert(data.message || "提交失敗");
+        addToast(data.message || "提交失敗", "error");
         return false;
       }
     } catch (e) {
-      alert("系統錯誤");
+      addToast("系統錯誤", "error");
       return false;
     } finally {
       submitting.value = false;
@@ -106,13 +108,13 @@ export function useLeave(user) {
         name: leave.name,
       });
       if (data.success) {
-        alert("OK");
+        addToast("OK", "success");
         getLeaves();
       } else {
-        alert("Fail: " + data.message);
+        addToast("Fail: " + data.message, "error");
       }
     } catch (e) {
-      alert(e.message);
+      addToast(e.message, "error");
     }
   };
 
@@ -121,11 +123,11 @@ export function useLeave(user) {
     try {
       const data = await cancelLeaveApi({ uid: user.uid, timestamp: leave.timestamp });
       if (data.success) {
-        alert("已撤回");
+        addToast("已撤回", "success");
         getLeaves();
       }
     } catch (e) {
-      alert("Error");
+      addToast("Error", "error");
     }
   };
 
