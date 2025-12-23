@@ -715,10 +715,13 @@ import { ref, reactive, computed, onMounted } from "vue";
 import Skeleton from "./Skeleton.vue";
 import { CASE_STATUS, ROLES } from "../constants/common.js";
 import { useToast } from "../composables/useToast.js";
+import { useUserStore } from "../stores/user.js";
 
 const { addToast } = useToast();
+const store = useUserStore();
+const user = computed(() => store.user);
 
-const props = defineProps(["user"]);
+// const props = defineProps(["user"]);
 const emit = defineEmits(["back"]);
 
 const activeTab = ref("apply");
@@ -730,7 +733,7 @@ const myCases = ref([]); // For Staff
 
 
 const isSupervisor = computed(() =>
-  ROLES.SUPERVISOR_ROLES.includes(props.user.role)
+  ROLES.SUPERVISOR_ROLES.includes(user.value.role)
 );
 
 const form = reactive({
@@ -760,8 +763,8 @@ const submit = async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...form,
-        uid: props.user.uid,
-        applicant: props.user.name,
+        uid: user.value.uid,
+        applicant: user.value.name,
         applyTypes: [form.applyType],
       }),
     });
@@ -889,7 +892,7 @@ const fetchCases = async () => {
     const res = await fetch("/api/get-cases", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid: props.user.uid, unit: props.user.unit }),
+      body: JSON.stringify({ uid: user.value.uid, unit: user.value.unit }),
     });
     const data = await res.json();
 
@@ -922,7 +925,7 @@ const fetchRanking = async () => {
      const res = await fetch("/api/get-case-ranking", {
          method: "POST",
          headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({ uid: props.user.uid }) 
+         body: JSON.stringify({ uid: user.value.uid }) 
      });
      const data = await res.json();
      if(data.success) {
@@ -951,8 +954,8 @@ const reviewCase = async (c, action, dateString = null, reason = null) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        uid: props.user.uid,
-        reviewerName: props.user.name,
+        uid: user.value.uid,
+        reviewerName: user.value.name,
         timestamp: c.timestamp,
         action: action,
         firstServiceDate: dateString,

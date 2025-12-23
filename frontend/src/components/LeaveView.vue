@@ -242,16 +242,20 @@ import Skeleton from "./Skeleton.vue";
 import LeaveForm from "./LeaveForm.vue";
 import LeaveList from "./LeaveList.vue";
 import { useLeave } from "../composables/useLeave.js";
+import { useUserStore } from "../stores/user.js";
 
-const props = defineProps(["user"]);
+const store = useUserStore();
+// const props = defineProps(["user"]);
 const emit = defineEmits(["back"]);
+
+const user = computed(() => store.user); // Added for template usage
 
 const activeTab = ref("pending"); // or 'apply'
 
 const {
     loading, submitting, allLeaves, isSupervisor, pendingLeaves, leaveForm,
     getLeaves, submitLeave, reviewLeave, cancelLeave
-} = useLeave(props.user);
+} = useLeave(store.user);
 
 const handleFormSubmit = async () => {
     const success = await submitLeave();

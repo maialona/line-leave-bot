@@ -332,10 +332,13 @@
 import { ref, reactive, computed, onMounted, nextTick, watch } from "vue";
 import Skeleton from "./Skeleton.vue";
 import { useToast } from "../composables/useToast.js";
+import { useUserStore } from "../stores/user.js";
 
 const { addToast } = useToast();
+const store = useUserStore();
+const user = computed(() => store.user);
 
-const props = defineProps(["user"]);
+// const props = defineProps(["user"]);
 const emit = defineEmits(["back"]);
 
 const mode = ref("list");
@@ -409,7 +412,7 @@ const useQuickReply = (text) => {
 
 const isSupervisor = computed(() =>
   ["Supervisor", "督導", "Business Manager", "業務負責人"].includes(
-    props.user.role
+    user.value.role
   )
 );
 
@@ -423,7 +426,7 @@ const fetchRecipients = async () => {
     const res = await fetch("/api/whisper/recipients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ unit: props.user.unit }),
+      body: JSON.stringify({ unit: user.value.unit }),
     });
     recipients.value = (await res.json()).recipients || [];
   } catch (e) {
@@ -438,7 +441,7 @@ const fetchWhispers = async () => {
     const res = await fetch("/api/whisper/get", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid: props.user.uid, role: roleType }),
+      body: JSON.stringify({ uid: user.value.uid, role: roleType }),
     });
     const data = await res.json();
     list.value = data.messages || [];
@@ -480,9 +483,9 @@ const submit = async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...form,
-        senderUid: props.user.uid,
-        senderName: props.user.name,
-        unit: props.user.unit,
+        senderUid: user.value.uid,
+        senderName: user.value.name,
+        unit: user.value.unit,
       }),
     });
     const result = await res.json();
@@ -544,7 +547,7 @@ const sendReply = async () => {
   // This logic is tricky. If I am the Creator (role=staff), I might want to continue being anonymous?
   // Check if the original thread was anonymous.
   
-  let displayName = props.user.name;
+  let displayName = user.value.name;
   if (!isSupervisor.value && currentMsg.value.isAnonymous) {
       displayName = '🤫 匿名';
   }
@@ -553,7 +556,7 @@ const sendReply = async () => {
       id: currentMsg.value.id,
       message: replyText.value,
       authorName: displayName,
-      authorUid: props.user.uid,
+      authorUid: user.value.uid,
       authorRole: isSupervisor.value ? 'supervisor' : 'staff'
   };
 

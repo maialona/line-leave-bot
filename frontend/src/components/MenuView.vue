@@ -130,7 +130,13 @@
 </template>
 
 <script setup>
-defineProps(["user"]);
+import { computed } from "vue";
+import { useUserStore } from "../stores/user.js";
+
+const store = useUserStore();
+const user = computed(() => store.user);
+
+// defineProps(["user"]);
 defineEmits(["navigate", "back"]);
 </script>
 

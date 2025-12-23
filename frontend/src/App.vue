@@ -20,8 +20,6 @@
       >
         <LandingView
           v-if="currentView === 'landing'"
-          :units="units"
-          :user="user"
           @user-bound="handleUserBound"
           @enter="currentView = 'menu'"
           @retry="checkUserStatus"
@@ -30,33 +28,27 @@
 
         <MenuView
           v-else-if="currentView === 'menu'"
-          :user="user"
           @navigate="handleNavigation"
           @back="currentView = 'landing'"
         />
 
         <LeaveView
           v-else-if="currentView === 'leave'"
-          :user="user"
           @back="currentView = 'menu'"
         />
 
         <WhisperView
           v-else-if="currentView === 'whisper'"
-          :user="user"
           @back="currentView = 'menu'"
         />
 
         <DevApplyView
           v-else-if="currentView === 'dev_apply'"
-          :user="user"
           @back="currentView = 'menu'"
         />
 
         <BulletinView
           v-else-if="currentView === 'bulletin'"
-          :user="user"
-          :units="units"
           @back="currentView = 'menu'"
         />
       </div>
@@ -67,8 +59,7 @@
 
 
 <script setup>
-import { ref, onMounted } from "vue";
-import liff from "@line/liff";
+import { ref, onMounted, computed } from "vue";
 import LandingView from "./components/LandingView.vue";
 import MenuView from "./components/MenuView.vue";
 import LeaveView from "./components/LeaveView.vue";
@@ -77,66 +68,25 @@ import DevApplyView from "./components/DevApplyView.vue";
 import BulletinView from "./components/BulletinView.vue";
 import ToastContainer from "./components/ToastContainer.vue";
 import { useToast } from "./composables/useToast.js";
+import { useUserStore } from "./stores/user.js";
 
 const { addToast } = useToast();
+const store = useUserStore();
 
-// State
-const loading = ref(true);
+// View State (Local UI state)
 const currentView = ref("landing");
-const user = ref(null);
 
-// LIFF ID (From project context)
-const LIFF_ID = import.meta.env.VITE_LIFF_ID;
-
-const units = ref([]);
+// Computed State from Store
+const loading = computed(() => store.loading);
+const user = computed(() => store.user); // Reactive reference to store user
 
 // Initialize
 onMounted(async () => {
-  try {
-    await liff.init({ liffId: LIFF_ID });
-    if (!liff.isLoggedIn()) {
-      liff.login();
-      return;
-    }
-    await checkUserStatus();
-  } catch (err) {
-    console.error("LIFF Init Error:", err);
-    addToast("LIFF 初始化失敗: " + err.message, "error");
-  }
-});
-
-const checkUserStatus = async () => {
-  try {
-    const profile = await liff.getProfile();
+    await store.initialize();
     
-    // Use the correct API endpoint '/api/check-user'
-    const idToken = liff.getIDToken();
-    const res = await fetch("/api/check-user", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-          uid: profile.userId,
-          idToken: idToken 
-      }),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      
-      // Store units whether bound or not
-      units.value = data.units || [];
-
-      if (data.registered) {
-         // Construct user object
-        user.value = { 
-            uid: profile.userId,
-            name: data.profiles[0].name,
-            unit: data.profiles[0].unit,
-            role: data.profiles[0].role,
-            profiles: data.profiles
-        };
-
-        // Check for deep link
+    // Auto-routing logic based on store state
+    if (store.user) {
+         // Check for deep link
         const params = new URLSearchParams(window.location.search);
         const viewParam = params.get("view");
         const validViews = ['menu', 'leave', 'whisper', 'dev_apply', 'bulletin'];
@@ -144,48 +94,35 @@ const checkUserStatus = async () => {
         if (viewParam && validViews.includes(viewParam)) {
             currentView.value = viewParam;
         } else {
-            currentView.value = "landing";
+            // Default to landing (welcome) or menu? 
+            // Original logic: landing if registered is true? 
+            // Original: if(data.registered)... check deep link... else `currentView.value = "landing"`.
+            // Wait, original logic said "if registered... if deep link... else landing". 
+            // It seems "landing" acts as a "Click to Enter" screen even for logged in users?
+            // "LandingView.vue" has a "進入系統" button if user exists? I need to check LandingView.
+            // Let's assume Landing is the entry point.
         }
-      } else {
-        currentView.value = "landing";
-      }
-    } else {
-      console.error("Check status failed");
-      addToast("檢查使用者狀態失敗", "error");
-      currentView.value = "landing"; 
     }
-  } catch (e) {
-    console.error("API Error:", e);
-    addToast("API 連線錯誤: " + e.message, "error");
-    currentView.value = "landing";
-  } finally {
-    loading.value = false;
-  }
-};
+});
 
 const handleUserBound = (userData) => {
-  user.value = userData;
-  // After binding, go to menu or stay on landing? 
-  // UX: Go to menu immediately after binding is fine, OR show welcome. 
-  // Let's go to menu to save a click for new users.
+  store.setUser(userData);
   currentView.value = "menu";
-
+  addToast("綁定成功！歡迎使用", "success");
 };
 
 const handleSwitchUser = (profileData) => {
-  user.value = {
-    ...profileData,
-    uid: user.value.uid, // Preserve valid UID
-    profiles: user.value.profiles
-  };
-  currentView.value = "landing"; // Ensure we stay on landing or go to menu? Let's stay on landing (welcome screen) to confirm.
-  // Actually, usually user wants to go to menu. But Welcome screen is safer.
+  store.switchUser(profileData);
+  currentView.value = "landing"; 
   addToast("已切換身分", "info");
 };
 
 const handleNavigation = (view) => {
   currentView.value = view;
 };
+
+// Retry handler for LandingView
+const checkUserStatus = () => store.initialize();
 </script>
 
 <style>

@@ -69,7 +69,7 @@
         >
           <option disabled value="">請選擇單位</option>
           <option
-            v-for="unit in props.units"
+            v-for="unit in units"
             :key="unit"
             :value="unit"
           >
@@ -148,14 +148,20 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import liff from "@line/liff";
 import { useToast } from "../composables/useToast.js";
+import { useUserStore } from "../stores/user.js";
 
 const { addToast } = useToast();
+const store = useUserStore();
 
-const props = defineProps(["user", "units"]); 
+// const props = defineProps(["user", "units"]); // Removed
 const emit = defineEmits(["user-bound", "enter", "retry", "switch-user"]);
+
+const units = computed(() => store.units);
+const user = computed(() => store.user);
+
 
 const showRoleSelector = ref(false);
 const isRebinding = ref(false);

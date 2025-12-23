@@ -256,10 +256,14 @@ import { ref, computed, onMounted } from 'vue';
 import Skeleton from "./Skeleton.vue";
 import { BULLETIN_STATUS, ROLES } from "../constants/common.js";
 import { useToast } from "../composables/useToast.js";
+import { useUserStore } from "../stores/user.js";
 
 const { addToast } = useToast();
+const store = useUserStore();
+const user = computed(() => store.user);
+const units = computed(() => store.units);
 
-const props = defineProps(['user', 'units']);
+// const props = defineProps(['user', 'units']);
 const emit = defineEmits(['back']);
 
 const loading = ref(true);
@@ -299,7 +303,7 @@ const categories = [
 ];
 
 const canCreate = computed(() => {
-    return ROLES.SUPERVISOR_ROLES.includes(props.user.role);
+    return ROLES.SUPERVISOR_ROLES.includes(user.value.role);
 });
 
 const filteredBulletins = computed(() => {
@@ -320,9 +324,9 @@ async function fetchBulletins() {
         const res = await fetch('/api/bulletin/get', { 
             method: 'POST', 
             body: JSON.stringify({ 
-                uid: props.user.uid,
-                role: props.user.role,
-                unit: props.user.unit,
+                uid: user.value.uid,
+                role: user.value.role,
+                unit: user.value.unit,
                 mode: isManagementView.value ? 'manage' : 'view' 
             }) 
         });
@@ -344,8 +348,8 @@ async function submitBulletin() {
             method: 'POST',
             body: JSON.stringify({
                 ...form.value,
-                author: props.user.name,
-                role: props.user.role 
+                author: user.value.name,
+                role: user.value.role 
             })
         });
         const data = await res.json();
@@ -371,8 +375,8 @@ async function deleteItem(id) {
             method: 'POST',
             body: JSON.stringify({ 
                 id, 
-                role: props.user.role,
-                userName: props.user.name 
+                role: user.value.role,
+                userName: user.value.name 
             })
         });
         const data = await res.json();
@@ -394,15 +398,15 @@ function formatDate(ts) {
 }
 
 function isRead(item) {
-    return item.readBy && item.readBy.some(val => val && val.includes(props.user.uid));
+    return item.readBy && item.readBy.some(val => val && val.includes(user.value.uid));
 }
 
 async function signBulletin(item) {
-    const signature = `${props.user.name} (${props.user.uid})`;
+    const signature = `${user.value.name} (${user.value.uid})`;
     
     // Optimistic Update
     if (!item.readBy) item.readBy = [];
-    if (!item.readBy.some(val => val && val.includes(props.user.uid))) {
+    if (!item.readBy.some(val => val && val.includes(user.value.uid))) {
         item.readBy.push(signature);
     }
 
@@ -411,8 +415,8 @@ async function signBulletin(item) {
             method: 'POST',
             body: JSON.stringify({ 
                 id: item.id, 
-                uid: props.user.uid,
-                name: props.user.name 
+                uid: user.value.uid,
+                name: user.value.name 
             })
         });
     } catch(e) {
