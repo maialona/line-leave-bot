@@ -125,6 +125,32 @@
           →
         </div>
       </div>
+
+       <!-- Refusal Report (Supervisors Only) -->
+      <div
+        v-if="isSupervisor"
+        @click="$emit('navigate', 'refusal_report')"
+        class="menu-item group hover:border-red-200"
+      >
+        <div
+          class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300"
+        >
+          🚫
+        </div>
+        <div class="text-left flex-1 min-w-0">
+          <h3
+            class="font-bold text-gray-800 truncate group-hover:text-red-600 transition-colors"
+          >
+            拒案通報站
+          </h3>
+          <p class="text-xs text-gray-500 truncate">通報拒案居服員</p>
+        </div>
+        <div
+          class="text-gray-300 group-hover:text-red-500 transition-colors transform group-hover:translate-x-1"
+        >
+          →
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -135,6 +161,7 @@ import { useUserStore } from "../stores/user.js";
 
 const store = useUserStore();
 const user = computed(() => store.user);
+const isSupervisor = computed(() => ["Supervisor", "督導", "Business Manager", "業務負責人"].includes(user.value?.role));
 
 // defineProps(["user"]);
 defineEmits(["navigate", "back"]);

@@ -91,6 +91,10 @@ app.post('/api/bulletin/create', wrap(bulletinHandlers.createBulletin));
 app.post('/api/bulletin/delete', wrap(bulletinHandlers.deleteBulletin));
 app.post('/api/bulletin/sign', wrap(bulletinHandlers.signBulletin));
 
+// Refusal Report API
+import { submitRefusal } from './api/refusal-service.js';
+app.post('/api/submit-refusal', wrap(submitRefusal));
+
 // Static Assets Fallback
 app.get('*', async (c) => {
     if (c.env.ASSETS) {

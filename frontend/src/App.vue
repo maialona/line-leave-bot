@@ -51,6 +51,11 @@
           v-else-if="currentView === 'bulletin'"
           @back="currentView = 'menu'"
         />
+
+        <RefusalReportView
+          v-else-if="currentView === 'refusal_report'"
+          @back="currentView = 'menu'"
+        />
       </div>
     </transition>
   </div>
@@ -66,6 +71,7 @@ import LeaveView from "./components/LeaveView.vue";
 import WhisperView from "./components/WhisperView.vue";
 import DevApplyView from "./components/DevApplyView.vue";
 import BulletinView from "./components/BulletinView.vue";
+import RefusalReportView from "./components/RefusalReportView.vue";
 import ToastContainer from "./components/ToastContainer.vue";
 import { useToast } from "./composables/useToast.js";
 import { useUserStore } from "./stores/user.js";
@@ -89,7 +95,7 @@ onMounted(async () => {
          // Check for deep link
         const params = new URLSearchParams(window.location.search);
         const viewParam = params.get("view");
-        const validViews = ['menu', 'leave', 'whisper', 'dev_apply', 'bulletin'];
+        const validViews = ['menu', 'leave', 'whisper', 'dev_apply', 'bulletin', 'refusal_report'];
 
         if (viewParam && validViews.includes(viewParam)) {
             currentView.value = viewParam;
