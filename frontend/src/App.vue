@@ -169,18 +169,15 @@ body {
   opacity: 0;
 }
 
-/* Custom Scrollbar */
+/* Hide Scrollbar (App-like feel) */
 ::-webkit-scrollbar {
-  width: 6px;
+  display: none;
+  width: 0;
+  height: 0;
 }
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-::-webkit-scrollbar-thumb {
-  background: #c7c7c7;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
 }
 </style>
