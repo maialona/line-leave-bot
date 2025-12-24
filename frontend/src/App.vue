@@ -114,7 +114,6 @@ onMounted(async () => {
 const handleUserBound = (userData) => {
   store.setUser(userData);
   currentView.value = "menu";
-  addToast("綁定成功！歡迎使用", "success");
 };
 
 const handleSwitchUser = (profileData) => {

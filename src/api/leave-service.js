@@ -4,7 +4,7 @@ import { uploadImageToDrive } from '../utils/google-drive.js';
 import { sendApprovalNotification } from '../utils/line-api.js';
 import { LEAVE_STATUS, ROLES } from '../constants/common.js';
 
-export async function submitLeave(request, env) {
+export async function submitLeave(request, env, ctx) {
     try {
         const form = await request.json();
         const token = await getAccessToken(env);
@@ -52,15 +52,19 @@ export async function submitLeave(request, env) {
             ]);
         }
 
-        await appendSheetRows(env.SHEET_ID, 'Leave_Records', rowsToAdd, token);
+        await appendSheetRows(env.SHEET_ID, 'Leave_Records!A:A', rowsToAdd, token);
         console.log("Leave recorded:", timestamp);
 
         // Send Notification (Non-blocking)
-        try {
-            await sendApprovalNotification(form, proofUrl, timestamp, env, token);
-        } catch (notifyError) {
-            console.error("Failed to send notification:", notifyError);
-            // We do NOT throw here, so the user still gets a success response
+        if (ctx && typeof ctx.waitUntil === 'function') {
+            ctx.waitUntil(sendApprovalNotification(form, proofUrl, timestamp, env, token).catch(e => console.error("Async Notify Error:", e)));
+        } else {
+            // Fallback
+             try {
+                await sendApprovalNotification(form, proofUrl, timestamp, env, token);
+            } catch (notifyError) {
+                console.error("Failed to send notification:", notifyError);
+            }
         }
 
         return { success: true };
@@ -154,16 +158,25 @@ export async function getLeaves(request, env) {
 
             // Debug first 3 rows comparison
             if (i < 3) {
-                comparisonLog.push(`Row ${i}: SheetUID='${rowUid}' vs TargetUID='${targetUid}' -> Match? ${rowUid.toLowerCase() === targetUid.toLowerCase()}`);
+                comparisonLog.push(`Row ${i} (First): SheetUID='${rowUid}' vs TargetUID='${targetUid}' -> Match? ${rowUid.toLowerCase() === targetUid.toLowerCase()}`);
+            }
+            // Debug last 3 rows comparison
+            if (i >= rows.length - 3) {
+                comparisonLog.push(`Row ${i} (Last): SheetUID='${rowUid}' vs TargetUID='${targetUid}' -> Match? ${rowUid.toLowerCase() === targetUid.toLowerCase()}`);
             }
 
+            // Hybrid Filter:
+            // 1. If Supervisor, allow matching Unit.
+            // 2. ALWAYS allow matching own UID (so they see their own leaves even if unit mismatches)
+            let isMatch = false;
+            
             if (isSupervisor) {
-                // Supervisor sees all in Unit
-                if (rowUnit !== targetUnit) return;
-            } else {
-                // Staff sees only their own UID AND Name (to prevent leakage if UID is reused)
-                if (rowUid.toLowerCase() !== targetUid.toLowerCase() || rowName !== targetName) return;
+                if (rowUnit === targetUnit && targetUnit) isMatch = true;
             }
+            
+            if (rowUid.toLowerCase() === targetUid.toLowerCase()) isMatch = true;
+
+            if (!isMatch) return;
 
             const key = r[colMap.timestamp] + '_' + r[colMap.uid];
 

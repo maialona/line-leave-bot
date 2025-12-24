@@ -27,25 +27,7 @@
     <!-- Supervisor Dashboard -->
     <div v-if="isSupervisor" class="flex-1 flex flex-col min-h-0">
       <!-- User Info -->
-      <div
-        class="mb-4 flex items-center justify-between bg-purple-50 p-3 rounded-lg flex-none"
-      >
-        <div>
-          <span class="text-purple-900 font-medium block"
-            >👋 您好，{{ user.name }}</span
-          >
-        </div>
-        <div class="flex space-x-1">
-          <span
-            class="text-xs bg-white text-purple-600 border border-purple-200 px-2 py-1 rounded-full"
-            >{{ user.unit }}</span
-          >
-          <span
-            class="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded-full"
-            >督導</span
-          >
-        </div>
-      </div>
+
 
       <!-- Tabs -->
       <div class="flex space-x-2 mb-4 border-b border-gray-200 flex-none">
@@ -159,11 +141,7 @@
 
     <!-- Staff Form View -->
     <div v-else class="flex-1 flex flex-col min-h-0">
-      <div class="mb-4 bg-indigo-50 p-3 rounded-lg flex-none">
-        <span class="text-indigo-900 font-medium block"
-          >👋 你好，{{ user.name }}</span
-        >
-      </div>
+
 
       <div class="flex space-x-2 mb-4 border-b border-gray-200 flex-none">
         <button

@@ -22,6 +22,26 @@
       </button>
       <h2 class="text-xl font-bold text-gray-800">請選擇服務</h2>
       <p class="text-sm text-gray-500 mt-1">您今天需要什麼協助？</p>
+      
+      <!-- User Info (Welcome Box) -->
+      <div v-if="isSupervisor" class="mt-4 flex items-center justify-between bg-purple-50 p-3 rounded-lg text-left">
+        <div>
+          <span class="text-purple-900 font-medium block">👋 您好，{{ user.name }}</span>
+        </div>
+        <div class="flex space-x-1">
+          <span class="text-xs bg-white text-purple-600 border border-purple-200 px-2 py-1 rounded-full">{{ user.unit }}</span>
+          <span class="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded-full">督導</span>
+        </div>
+      </div>
+      <div v-else class="mt-4 flex items-center justify-between bg-indigo-50 p-3 rounded-lg text-left">
+        <div>
+          <span class="text-indigo-900 font-medium block">👋 你好，{{ user.name }}</span>
+        </div>
+        <div class="flex space-x-1">
+          <span class="text-xs bg-white text-indigo-600 border border-indigo-200 px-2 py-1 rounded-full">{{ user.unit }}</span>
+          <span class="text-xs bg-indigo-200 text-indigo-800 px-2 py-1 rounded-full">{{ user.role || '居服員' }}</span>
+        </div>
+      </div>
     </div>
 
     <!-- Menu Grid -->

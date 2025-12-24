@@ -32,7 +32,13 @@ export function useLeave(user) {
     loading.value = true;
     try {
       const data = await fetchLeavesApi(user.uid);
-      if (data.success) allLeaves.value = data.leaves || [];
+      if (data.success) {
+          allLeaves.value = data.leaves || [];
+          if (allLeaves.value.length === 0 && data.debug && data.debug.comparisonLog) {
+              const debugMsg = data.debug.comparisonLog.join('\n');
+              console.warn("Debug Refs:", debugMsg);
+          }
+      }
     } catch (e) {
       console.error(e);
     } finally {
