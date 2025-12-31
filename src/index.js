@@ -90,6 +90,7 @@ app.post('/api/bulletin/get', wrap(bulletinHandlers.getBulletins));
 app.post('/api/bulletin/create', wrap(bulletinHandlers.createBulletin));
 app.post('/api/bulletin/delete', wrap(bulletinHandlers.deleteBulletin));
 app.post('/api/bulletin/sign', wrap(bulletinHandlers.signBulletin));
+app.post('/api/bulletin/stats', wrap(bulletinHandlers.getBulletinStats));
 
 // Refusal Report API
 import { submitRefusal, getRefusalStats } from './api/refusal-service.js';

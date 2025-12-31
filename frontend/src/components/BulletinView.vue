@@ -204,7 +204,12 @@
                             <span class="text-[10px] text-gray-400 flex-shrink-0">{{ formatDate(item.timestamp) }}</span>
                          </div>
                          <!-- Title -->
-                         <h3 class="font-bold text-gray-800 text-base truncate">{{ item.title }}</h3>
+                         <h3 
+                           class="font-bold text-gray-800 text-base transition-all duration-200"
+                           :class="{ 'truncate': !expandedItems.has(item.id) }"
+                         >
+                           {{ item.title }}
+                         </h3>
                     </div>
                     
                     <!-- Expand Icon -->
@@ -244,7 +249,68 @@
                             </button>
                         </div>
                     </div>
+
+                    <!-- Supervisor: View Unread Stats Button -->
+                    <div v-if="canCreate && item.status !== BULLETIN_STATUS.DRAFT" class="mt-3 pt-3 border-t border-gray-100">
+                         <button 
+                           @click.stop="showStats(item)"
+                           class="w-full flex items-center justify-center space-x-2 text-indigo-600 hover:bg-indigo-50 py-2 rounded-lg transition-colors font-bold text-sm"
+                         >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                            <span>查看已讀狀況</span>
+                         </button>
+                    </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Modal -->
+    <div v-if="statsModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" @click.self="closeStats">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative animate-scale-up max-h-[80vh] flex flex-col">
+            <button @click="closeStats" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h3 class="text-lg font-bold text-gray-800 mb-1 flex items-center">
+                📊 公告已讀統計
+            </h3>
+            <p class="text-xs text-gray-500 mb-4">{{ statsModal.bulletinTitle }}</p>
+
+            <div v-if="statsModal.loading" class="flex flex-col items-center justify-center py-8 space-y-3">
+                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                 <span class="text-gray-400 text-sm">統計中...</span>
+            </div>
+
+            <div v-else class="flex-1 overflow-hidden flex flex-col">
+                 <!-- Summary Cards -->
+                 <div class="grid grid-cols-2 gap-3 mb-4 flex-shrink-0">
+                     <div class="bg-green-50 p-3 rounded-xl border border-green-100 flex flex-col items-center">
+                         <span class="text-green-600 text-xs font-bold">已讀人數</span>
+                         <span class="text-2xl font-bold text-green-700">{{ statsModal.data.read }}</span>
+                     </div>
+                     <div class="bg-red-50 p-3 rounded-xl border border-red-100 flex flex-col items-center">
+                         <span class="text-red-600 text-xs font-bold">未讀人數</span>
+                         <span class="text-2xl font-bold text-red-700">{{ statsModal.data.unread }}</span>
+                         <span class="text-[10px] text-gray-400">/ 總共 {{ statsModal.data.total }}</span>
+                     </div>
+                 </div>
+
+                 <!-- Unread List -->
+                 <div class="flex items-center justify-between mb-2">
+                     <h4 class="text-sm font-bold text-gray-700">未讀名單 ({{ statsModal.data.unread }})</h4>
+                 </div>
+                 
+                 <div class="flex-1 overflow-y-auto bg-gray-50 rounded-xl p-3 border border-gray-100">
+                     <div v-if="statsModal.data.unreadList.length === 0" class="flex flex-col items-center justify-center h-full text-green-500 space-y-2">
+                         <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                         <span class="font-bold">太棒了！全員已讀</span>
+                     </div>
+                     <div v-else class="grid grid-cols-2 gap-2">
+                         <div v-for="name in statsModal.data.unreadList" :key="name" class="flex items-center space-x-2 bg-white p-2 rounded-lg shadow-sm justify-center">
+                             <span class="text-sm text-gray-700 font-medium">{{ name }}</span>
+                         </div>
+                     </div>
+                 </div>
             </div>
         </div>
     </div>
@@ -273,6 +339,14 @@ const isCreating = ref(false); // Mode switch: List vs Create Form
 const submitting = ref(false);
 const isManagementView = ref(false);
 const expandedItems = ref(new Set());
+
+// Stats Modal
+const statsModal = ref({
+    show: false,
+    loading: false,
+    bulletinTitle: '',
+    data: { total: 0, read: 0, unread: 0, unreadList: [] }
+});
 
 function toggleItem(id) {
     if (expandedItems.value.has(id)) {
@@ -422,6 +496,40 @@ async function signBulletin(item) {
     } catch(e) {
         console.error('Sign error', e);
     }
+}
+
+// Stats Modal Logic
+async function showStats(bulletin) {
+    statsModal.value.show = true;
+    statsModal.value.loading = true;
+    statsModal.value.bulletinTitle = bulletin.title;
+    
+    try {
+        const res = await fetch('/api/bulletin/stats', {
+            method: 'POST',
+            body: JSON.stringify({
+                id: bulletin.id,
+                requestorUnit: user.value.unit,
+                requestorRole: user.value.role
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            statsModal.value.data = data.stats;
+        } else {
+            addToast(data.message, 'error');
+            closeStats();
+        }
+    } catch (e) {
+        addToast('無法載入統計', 'error');
+        closeStats();
+    } finally {
+        statsModal.value.loading = false;
+    }
+}
+
+function closeStats() {
+    statsModal.value.show = false;
 }
 </script>
 

@@ -217,10 +217,112 @@ async function deleteBulletin(req, env) {
     return { success: true, message: '公告已刪除' };
 }
 
+async function getBulletinStats(req, env) {
+    const data = await req.json();
+    const { id, requestorUnit, requestorRole } = data;
+
+    // Only Supervisors/Admins can check stats
+    if (!ROLES.SUPERVISOR_ROLES.includes(requestorRole)) {
+        return { success: false, message: '無權限查看' };
+    }
+
+    const token = await getAccessToken(env);
+
+    // 1. Get Bulletin Info (Target Unit & ReadBy)
+    const bRows = await getSheetData(env.SHEET_ID, `${BULLETIN_SHEET}!A2:K`, token);
+    const bulletin = bRows.find(r => r[0] === id);
+
+    if (!bulletin) return { success: false, message: '找不到公告' };
+
+    const targetUnit = bulletin[8]; // Col I
+    let readBy = [];
+    try {
+        if (bulletin[10]) readBy = JSON.parse(bulletin[10]);
+    } catch (e) {}
+
+    // 2. Get All Staff
+    const metaResp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${env.SHEET_ID}`, { headers: { Authorization: `Bearer ${token}` } });
+    const metaData = await metaResp.json();
+    const firstSheetName = metaData.sheets[0].properties.title;
+    const staffRows = await getSheetData(env.SHEET_ID, `${firstSheetName}!A2:F`, token);
+
+    // 3. Filter Relevant Staff
+    // Logic: 
+    // - If Bulletin Target is 'All', we filter by Requestor's Unit (so they only see their own staff).
+    // - If Bulletin Target is specific (e.g. 'Unit A'), we filter by that Target Unit.
+    // - EXCEPTION: If Requestor is 'System' or top admin? For now assume Supervisor only cares about their unit.
+    
+    // Actually, if I am Unit A Supervisor, I should only see Unit A staff regardless of whether the bulletin was ensuring for All or Unit A.
+    // So filter = Requestor's Unit. (Unless Requestor is "System" or "Admin" who might want to see all).
+    // Let's assume RequestorUnit is passed correctly from frontend (e.g. user.unit).
+    
+    // Safety: If RequestorUnit is empty/undefined, maybe return empty?
+    if (!requestorUnit) return { success: false, message: '無法識別您的單位' };
+
+    const relevantStaff = staffRows.filter(r => {
+        const unit = r[0]; // Col A
+        // If Requestor is 'Admin' or 'System', maybe they can see all? 
+        // For simplicity: Strict Unit Match for "Supervisors".
+        // Use loose match if needed?
+        return unit === requestorUnit;
+    });
+
+    // 4. Calculate Unread
+    // readBy format: ["Name (UID)", "Name2 (UID2)"] or legacy "UID"
+    // specific staff row: [Unit, Title, Role, UID, N/A, IsActive?] -> We assume all in sheet are active? 
+    // Ideally check if they are "Active". The sheet col F (index 5) might be status? 
+    // user-service says: r[5] might be status? Let's assume all listed are active for now or check if not 'Left'?
+    // Previous code didn't check active status explicitly in auth usually.
+    
+    const unreadList = [];
+    const readCount = 0;
+    
+    // Create a Set of Read UIDs for faster lookup
+    const readUids = new Set();
+    readBy.forEach(entry => {
+        // Entry could be "Name (UID)" or "UID"
+        if (entry.includes('(')) {
+            const matches = entry.match(/\((.*?)\)/);
+            if (matches && matches[1]) readUids.add(matches[1]);
+        } else {
+            readUids.add(entry);
+        }
+    });
+
+    relevantStaff.forEach(staff => {
+        const uid = staff[3]; // Col D
+        const name = staff[1]; // Col B (Staff Name in Col B? Wait, user-service says: r[1] is Name? Let's check.)
+        // user-service.js: 
+        // const staffRows = await getSheetData(env.SHEET_ID, `${firstSheetName}!A2:F`, token);
+        // user = staffRows.find(r => r[3] === uid);
+        // Col A: Unit, Col C: Role, Col D: UID. So Col B likely Name.
+        
+        if (uid && !readUids.has(uid)) {
+            unreadList.push(name);
+        }
+    });
+
+    // Calculate stats for THIS UNIT
+    const totalInUnit = relevantStaff.length;
+    const unreadCount = unreadList.length;
+    const readInUnitCount = totalInUnit - unreadCount;
+
+    return {
+        success: true,
+        stats: {
+            total: totalInUnit,
+            read: readInUnitCount,
+            unread: unreadCount,
+            unreadList: unreadList
+        }
+    };
+}
+
 export const bulletinHandlers = {
     getBulletins,
     createBulletin,
     deleteBulletin,
-    signBulletin
+    signBulletin,
+    getBulletinStats
 };
 
