@@ -16,8 +16,10 @@ export async function sendApprovalNotification(data, proofUrl, timestamp, env, t
     const unit = applicant[0];
 
     // 2. Find Supervisors in SAME Unit
+    // 2. Find Supervisors in SAME Unit
+    // Updated: Include Business Manager
     const supervisors = staffRows
-        .filter(row => row[0] === unit && ['Supervisor', '督導'].includes(row[2]) && row[3])
+        .filter(row => row[0] === unit && ['Supervisor', '督導', 'Business Manager', '業務負責人'].includes(row[2]) && row[3])
         .map(row => row[3]);
 
     if (supervisors.length === 0) return;
