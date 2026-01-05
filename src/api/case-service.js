@@ -26,7 +26,7 @@ export async function submitCase(request, env) {
         ];
 
         // Append to 'Case_Applications' sheet
-        await appendSheetRows(env.SHEET_ID, 'Case_Applications', [rowData], token);
+        await appendSheetRows(env.SHEET_ID, 'Case_Applications!A:A', [rowData], token);
 
         // Notify Reviewers
         await sendCaseApprovalNotification({ ...form, timestamp, uid: form.uid }, env, token);

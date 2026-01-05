@@ -29,11 +29,15 @@ export async function updateSheetCell(sheetId, range, value, token) {
 
 export async function appendSheetRows(sheetId, range, values, token) {
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED`;
-    await fetch(url, {
+    const resp = await fetch(url, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ values: values }),
     });
+    const data = await resp.json();
+    if (data.error) {
+        throw new Error(`Google Sheets Append Error: ${data.error.message}`);
+    }
 }
 
 
