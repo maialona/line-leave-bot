@@ -37,16 +37,7 @@ export async function getRefusalStats(request, env) {
         
         // Read Refusal_Reports Sheet
         // Columns: A:Timestamp, B:Supervisor, C:Agency, D:Attendant, E:Date, F:Assessment, G:Reason
-        // We need Agency (C) and Attendant (D) for aggregation.
-        // Let's fetch A:D to be safe or just C:D? simpler to fetch all used range or A:D.
-        
-        // Using existing helper getSheetData
-        // Need to import getSheetData first if not implicitly available (it is not, I need to check imports)
-        // Check imports in file...
-        // imports are: getAccessToken, appendSheetRows. Need to add getSheetData.
-        
-        // Let's assume I fix imports in a separate/same block.
-        const rows = await getSheetData(env.SHEET_ID, 'Refusal_Reports!A2:D', token);
+        const rows = await getSheetData(env.SHEET_ID, 'Refusal_Reports!A2:G', token);
         
         if (!rows || rows.length === 0) {
             return { success: true, stats: [] };
@@ -66,16 +57,30 @@ export async function getRefusalStats(request, env) {
                 statsMap[key] = {
                     agency,
                     attendant,
-                    count: 0
+                    count: 0,
+                    details: []
                 };
             }
             statsMap[key].count++;
+            
+            // Add details
+            statsMap[key].details.push({
+                timestamp: row[0],
+                supervisor: row[1],
+                date: row[4], // Refusal Date
+                reason: row[6] // Specific Reason
+            });
         });
 
         const stats = Object.values(statsMap); // Convert values to array
 
-        // Sort by Count desc? or Agency? User didn't specify. Agency then Count is reasonable.
+        // Sort by Count desc
         stats.sort((a, b) => b.count - a.count);
+        
+        // Sort details by date desc for each person
+        stats.forEach(s => {
+            s.details.sort((a, b) => new Date(b.date) - new Date(a.date));
+        });
 
         return { success: true, stats };
 

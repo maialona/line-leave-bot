@@ -157,13 +157,38 @@
             尚無通報紀錄
         </div>
         <div v-else class="space-y-3">
-            <div v-for="(rec, index) in records" :key="index" class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
-                <div>
-                   <div class="text-sm text-gray-500 mb-1">{{ rec.agency }}</div>
-                   <div class="font-bold text-gray-800 text-lg">{{ rec.attendant }}</div>
+            <div v-for="(rec, index) in records" :key="index" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <!-- Header / Summary Row -->
+                <div 
+                    @click="toggleExpand(index)"
+                    class="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors select-none"
+                >
+                    <div class="flex items-center">
+                        <div class="mr-3 text-gray-400 transition-transform duration-200" :class="{ 'rotate-90': rec.expanded }">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </div>
+                        <div>
+                           <div class="text-sm text-gray-500 mb-1">{{ rec.agency }}</div>
+                           <div class="font-bold text-gray-800 text-lg">{{ rec.attendant }}</div>
+                        </div>
+                    </div>
+                    <div class="bg-red-50 text-red-600 font-bold px-4 py-2 rounded-lg text-lg">
+                        {{ rec.count }} <span class="text-xs font-normal">次</span>
+                    </div>
                 </div>
-                <div class="bg-red-50 text-red-600 font-bold px-4 py-2 rounded-lg text-lg">
-                    {{ rec.count }} <span class="text-xs font-normal">次</span>
+
+                <!-- Expanded Details -->
+                <div v-if="rec.expanded" class="bg-gray-50 border-t border-gray-100 p-4 space-y-3 animate-fade-in">
+                    <div v-for="(detail, dIdx) in rec.details" :key="dIdx" class="bg-white p-3 rounded-lg border border-gray-200 text-sm">
+                        <div class="flex justify-between items-start mb-2">
+                             <span class="font-bold text-gray-700">📅 {{ detail.date }}</span>
+                             <span class="text-xs text-gray-400">通報人: {{ detail.supervisor }}</span>
+                        </div>
+                        <div class="text-gray-600 leading-relaxed whitespace-pre-wrap">{{ detail.reason }}</div>
+                    </div>
+                    <div v-if="!rec.details || rec.details.length === 0" class="text-center text-gray-400 text-sm py-2">
+                        無詳細資料
+                    </div>
                 </div>
             </div>
         </div>
@@ -278,6 +303,10 @@ const loadRecords = async () => {
     } finally {
         loadingStats.value = false;
     }
+};
+
+const toggleExpand = (index) => {
+    records.value[index].expanded = !records.value[index].expanded;
 };
 
 watch(activeTab, (newTab) => {
