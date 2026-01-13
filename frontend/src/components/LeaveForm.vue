@@ -71,6 +71,7 @@
       <div class="flex justify-between items-center mb-2">
         <label class="block text-sm font-medium text-gray-900">受影響個案 <span class="text-red-500">*</span></label>
         <button
+          v-if="!form.noCase"
           type="button"
           @click="addCase"
           class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded"
@@ -78,7 +79,20 @@
           + 新增
         </button>
       </div>
+
+      <!-- Option A: No Case Checkbox -->
+      <div class="mb-3 flex items-center">
+          <input 
+            type="checkbox" 
+            id="noCase" 
+            v-model="form.noCase" 
+            class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+          >
+          <label for="noCase" class="ml-2 text-sm text-gray-600 font-medium">此時段無排定服務個案</label>
+      </div>
+
       <div
+        v-if="!form.noCase"
         v-for="(item, idx) in form.cases"
         :key="idx"
         class="bg-gray-50 p-2 rounded mb-2 border border-gray-200"
@@ -139,18 +153,17 @@ const emit = defineEmits(['submit']);
 const leaveTypes = LEAVE_TYPES;
 
 const handleSubmit = () => {
-  console.log("Submitting Leave Form. Cases:", props.form.cases);
-  if (!props.form.cases || props.form.cases.length === 0) {
-    addToast('無法送出: 請至少新增一個受影響個案 (按 + 新增)', 'warning');
-    return;
-  }
-  // Check if all cases have name/time filled?
-  // User request just said "affected part" is mandatory. 
-  // Often users click "Add" but leave it empty.
-  const incompleteCase = props.form.cases.some(c => !c.caseName || !c.startTime || !c.endTime);
-  if (incompleteCase) {
-    addToast('請完整填寫受影響個案資訊 (姓名、開始時間、結束時間)', 'warning');
-    return;
+  // If noCase is checked, skip validation
+  if (!props.form.noCase) {
+      if (!props.form.cases || props.form.cases.length === 0) {
+        addToast('無法送出: 請至少新增一個受影響個案 (按 + 新增)', 'warning');
+        return;
+      }
+      const incompleteCase = props.form.cases.some(c => !c.caseName || !c.startTime || !c.endTime);
+      if (incompleteCase) {
+        addToast('請完整填寫受影響個案資訊 (姓名、開始時間、結束時間)', 'warning');
+        return;
+      }
   }
   emit('submit');
 };

@@ -222,11 +222,13 @@ export async function handlePostback(event, env) {
     // Determines Sheet and Range based on Type
     const isCase = data.type === 'case';
     const sheetName = isCase ? 'Case_Applications' : 'Leave_Records';
-    const range = isCase ? 'Case_Applications!A:A' : 'Leave_Records!A:K';
+    // Fetch up to Column K (Status) to check existing status
+    const range = isCase ? 'Case_Applications!A:K' : 'Leave_Records!A:K';
     
     // Find Row
     const rows = await getSheetData(env.SHEET_ID, range, token);
     let rowIndex = -1;
+    let currentStatus = '';
 
     for (let i = 0; i < rows.length; i++) {
         // Case: Check Timestamp (Col 0) only? Or Timestamp + UID? Case sheet only has Applicant Name in Col C, UID is NOT in sheet.
@@ -234,11 +236,28 @@ export async function handlePostback(event, env) {
         // For Case, we rely on Timestamp (unique enough for now).
         if (rows[i][0] === data.ts) {
             rowIndex = i + 1;
+            currentStatus = rows[i][10]; // Column K is index 10
             break;
         }
     }
 
     if (rowIndex > -1) {
+        // Idempotency Check: If already processed, stop here.
+        if (currentStatus === 'Approved' || currentStatus === 'Rejected') {
+             await fetch('https://api.line.me/v2/bot/message/reply', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN
+                },
+                body: JSON.stringify({
+                    replyToken: event.replyToken,
+                    messages: [{ type: 'text', text: `⚠️ 此申請已被${currentStatus === 'Approved' ? '核准' : '駁回'}，請勿重複操作。` }]
+                })
+            });
+            return;
+        }
+
         const status = data.action === 'approve' ? 'Approved' : 'Rejected';
         const statusCol = isCase ? 'K' : 'K'; // Both happen to be K (Col 11)
         

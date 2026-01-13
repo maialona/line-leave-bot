@@ -25,6 +25,7 @@ export function useLeave(user) {
     reason: "",
     proofBase66: "",
     proofPreview: "",
+    noCase: false,
     cases: [],
   });
 
@@ -56,16 +57,22 @@ export function useLeave(user) {
     }
 
     // MANDATORY CASE VALIDATION
-    console.log("Inside useLeave submit. Cases:", leaveForm.cases);
-    if (!leaveForm.cases || leaveForm.cases.length === 0) {
-      addToast("系統阻擋: 請至少填寫一個受影響個案", "warning");
-      return false;
+    // Bypass if noCase is checked
+    if (!leaveForm.noCase) {
+        if (!leaveForm.cases || leaveForm.cases.length === 0) {
+        addToast("系統阻擋: 請至少填寫一個受影響個案", "warning");
+        return false;
+        }
+        const incompleteCase = leaveForm.cases.some(c => !c.caseName || !c.startTime || !c.endTime);
+        if (incompleteCase) {
+        addToast("請完整填寫受影響個案資訊 (姓名、開始時間、結束時間)", "warning");
+        return false;
+        }
+    } else {
+        // If noCase is true, ensure cases is empty to avoid confusion
+        leaveForm.cases = [];
     }
-    const incompleteCase = leaveForm.cases.some(c => !c.caseName || !c.startTime || !c.endTime);
-    if (incompleteCase) {
-      addToast("請完整填寫受影響個案資訊 (姓名、開始時間、結束時間)", "warning");
-      return false;
-    }
+    
     submitting.value = true;
     try {
       const data = await submitLeaveApi({
