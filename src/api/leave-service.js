@@ -24,40 +24,61 @@ export async function submitLeave(request, env, ctx) {
             duration = (diff / 60).toFixed(1);
         }
 
-        // Save to Sheet
+        // Check for Batch Dates
+        const dates = form.dates || [form.date];
         const timestamp = new Date().toISOString();
         const rowsToAdd = [];
 
-        if (form.cases && form.cases.length > 0) {
-            form.cases.forEach(c => {
-                const caseTimeStr = c.startTime && c.endTime ? `(${c.startTime}~${c.endTime})` : '';
-                const subStr = c.substitute ? ' [需代班]' : '';
-                const caseDetail = `${c.caseName} ${caseTimeStr}${subStr}`;
+        // Loop through dates
+        dates.forEach(dateStr => {
+            // Case Logic per Date
+             if (form.cases && form.cases.length > 0) {
+                 form.cases.forEach(c => {
+                    if (c.slots && c.slots.length > 0) {
+                        c.slots.forEach(slot => {
+                            const caseTimeStr = slot.startTime && slot.endTime ? ` (${slot.startTime}~${slot.endTime})` : '';
+                            const subStr = slot.substitute ? ' [需代班]' : '';
+                            const caseDetail = `${c.caseName}${caseTimeStr}${subStr}`;
 
+                            rowsToAdd.push([
+                                timestamp, form.unit, form.uid, form.name, form.leaveType, dateStr,
+                                form.timeSlot, // Col G: Global Time
+                                caseDetail,    // Col H: Case Name + Time
+                                form.reason, proofUrl, LEAVE_STATUS.PENDING,
+                                form.duration  // Col L: Duration (Hours)
+                            ]);
+                        });
+                    } else {
+                        // Fallback: Case with no slots (Shouldn't happen with UI validation but safe to handle)
+                        rowsToAdd.push([
+                            timestamp, form.unit, form.uid, form.name, form.leaveType, dateStr,
+                            form.timeSlot, 
+                            c.caseName, // Just Name
+                            form.reason, proofUrl, LEAVE_STATUS.PENDING,
+                            form.duration
+                        ]);
+                    }
+                });
+            } else {
                 rowsToAdd.push([
-                    timestamp, form.unit, form.uid, form.name, form.leaveType, form.date,
+                    timestamp, form.unit, form.uid, form.name, form.leaveType, dateStr,
                     form.timeSlot, // Col G: Global Time
-                    caseDetail,    // Col H: Case Name + Time
+                    '',            // Col H: Empty Case
                     form.reason, proofUrl, LEAVE_STATUS.PENDING,
-                    form.duration  // Col L: Duration (Hours)
+                    duration  // Col L: Duration (Hours)
                 ]);
-            });
-        } else {
-            rowsToAdd.push([
-                timestamp, form.unit, form.uid, form.name, form.leaveType, form.date,
-                form.timeSlot, // Col G: Global Time
-                '',            // Col H: Empty Case
-                form.reason, proofUrl, LEAVE_STATUS.PENDING,
-                duration  // Col L: Duration (Hours)
-            ]);
-        }
+            }
+        });
 
         await appendSheetRows(env.SHEET_ID, 'Leave_Records!A:A', rowsToAdd, token);
-        console.log("Leave recorded:", timestamp);
+        console.log("Leave recorded:", timestamp, "Count:", rowsToAdd.length);
 
-        // Send Notification (Non-blocking)
+        // Send Notification (Single Notification for Batch)
+        // Modify form to represent the batch for notification
+        const notifyData = { ...form, date: dates.join(', ') + (dates.length > 1 ? ` (共${dates.length}天)` : '') };
+        
         if (ctx && typeof ctx.waitUntil === 'function') {
-            ctx.waitUntil(sendApprovalNotification(form, proofUrl, timestamp, env, token).catch(e => console.error("Async Notify Error:", e)));
+            ctx.waitUntil(sendApprovalNotification(notifyData, proofUrl, timestamp, env, token).catch(e => console.error("Async Notify Error:", e)));
         } else {
             // Fallback
              try {
@@ -187,22 +208,70 @@ export async function getLeaves(request, env) {
                     uid: r[colMap.uid],
                     name: r[colMap.name],
                     leaveType: r[colMap.leaveType],
-                    date: r[colMap.date],
+                    // Initialize with stored date, but we will recalculate later
+                    date: r[colMap.date], 
+                    timeSlot: r[colMap.time], 
+                    duration: r[colMap.duration], 
                     reason: r[colMap.reason],
                     proofUrl: r[colMap.proof],
                     status: r[colMap.status] || LEAVE_STATUS.PENDING,
-                    cases: []
+                    cases: [],
+                    // Date Aggregation Set
+                    dateSet: new Set()
                 });
             }
-            if (r[colMap.case] || r[colMap.time]) {
-                leavesMap.get(key).cases.push({
-                    name: r[colMap.case] || '未指定',
-                    time: r[colMap.time] || ''
-                });
+            // Always add date to set
+            if (r[colMap.date]) {
+                leavesMap.get(key).dateSet.add(r[colMap.date]);
+            }
+
+            if (r[colMap.case]) {
+                const rawCase = r[colMap.case];
+                // Regex to parse: "Name (08:00~09:00) [需代班]"
+                // Case 1: "ClientA (08:00~09:00) [需代班]"
+                // Case 2: "ClientB (10:00~11:00)"
+                // Case 3: "ClientC" (Backward compat)
+                
+                const match = rawCase.match(/^(.*?)(?:\s\((.*?)\))?(?:\s\[(.*?)\])?$/);
+                let cName = rawCase;
+                let cTime = '';
+                let cSub = false;
+
+                if (match) {
+                    cName = match[1] || rawCase;
+                    cTime = match[2] || '';
+                    cSub = !!match[3]; // If exists, it represents substitute needed
+                }
+                
+                const currentCases = leavesMap.get(key).cases;
+                const isDuplicate = currentCases.some(c => 
+                    c.name === cName.trim() && 
+                    c.time === cTime && 
+                    c.substitute === cSub
+                );
+
+                if (!isDuplicate) {
+                    currentCases.push({
+                        name: cName.trim(),
+                        time: cTime,
+                        substitute: cSub
+                    });
+                }
             }
         });
 
         const leaves = Array.from(leavesMap.values());
+
+        // Process Date Ranges
+        leaves.forEach(leave => {
+            if (leave.dateSet && leave.dateSet.size > 1) {
+                const dates = Array.from(leave.dateSet).sort();
+                // Simple Range: First ~ Last
+                leave.date = `${dates[0]} ~ ${dates[dates.length - 1]}`;
+            }
+            // Cleanup Set
+            delete leave.dateSet;
+        });
 
         // Sort by timestamp desc (Safe Sort)
         leaves.sort((a, b) => {

@@ -225,24 +225,23 @@ export async function handlePostback(event, env) {
     // Fetch up to Column K (Status) to check existing status
     const range = isCase ? 'Case_Applications!A:K' : 'Leave_Records!A:K';
     
-    // Find Row
+    // Find Rows (Batch Support)
     const rows = await getSheetData(env.SHEET_ID, range, token);
-    let rowIndex = -1;
+    let targetRowIndices = [];
     let currentStatus = '';
 
     for (let i = 0; i < rows.length; i++) {
-        // Case: Check Timestamp (Col 0) only? Or Timestamp + UID? Case sheet only has Applicant Name in Col C, UID is NOT in sheet.
-        // But Leave has UID in Col C (index 2).
-        // For Case, we rely on Timestamp (unique enough for now).
+        // Check Timestamp (Col 0)
+        // If Batch, multiple rows will share SAME timestamp.
         if (rows[i][0] === data.ts) {
-            rowIndex = i + 1;
-            currentStatus = rows[i][10]; // Column K is index 10
-            break;
+            targetRowIndices.push(i + 1);
+            currentStatus = rows[i][10]; // Column K is index 10. Check first found for status.
         }
     }
 
-    if (rowIndex > -1) {
+    if (targetRowIndices.length > 0) {
         // Idempotency Check: If already processed, stop here.
+        // We assume all rows in batch have same status.
         if (currentStatus === 'Approved' || currentStatus === 'Rejected') {
              await fetch('https://api.line.me/v2/bot/message/reply', {
                 method: 'POST',
@@ -261,8 +260,19 @@ export async function handlePostback(event, env) {
         const status = data.action === 'approve' ? 'Approved' : 'Rejected';
         const statusCol = isCase ? 'K' : 'K'; // Both happen to be K (Col 11)
         
-        // Update Status
-        await updateSheetCell(env.SHEET_ID, `${sheetName}!${statusCol}${rowIndex}`, status, token);
+        // Update Status for ALL Indices
+        // Note: Google Sheets API is efficient with batch updates but here we loop 1-by-1 for simplicity or construct batch update?
+        // simple updateSheetCell is 1 call. 
+        // Best approach: If continuous, we can update range?
+        // Usually they are continuous because appended together.
+        // Let's optimisticly assume continuous: Min index to Max index?
+        // But to be safe, loop update.
+        
+        // Wait, parallel updates might hit rate limit?
+        // Let's use loop await.
+        for (const idx of targetRowIndices) {
+             await updateSheetCell(env.SHEET_ID, `${sheetName}!${statusCol}${idx}`, status, token);
+        }
         
         // If Case, update Reviewer (L) and Time (M)
         if (isCase) {
@@ -276,10 +286,10 @@ export async function handlePostback(event, env) {
                 const time = new Date().toISOString();
 
                 // Update L (Reviewer) and M (Time)
-                // Batch update or individual cells? updateSheetCell is single cell.
-                // We can use updateSheetCell twice.
-                await updateSheetCell(env.SHEET_ID, `${sheetName}!L${rowIndex}`, reviewerName, token);
-                await updateSheetCell(env.SHEET_ID, `${sheetName}!M${rowIndex}`, time, token);
+                for (const idx of targetRowIndices) {
+                    await updateSheetCell(env.SHEET_ID, `${sheetName}!L${idx}`, reviewerName, token);
+                    await updateSheetCell(env.SHEET_ID, `${sheetName}!M${idx}`, time, token);
+                }
              } catch (e) {
                  console.error('Failed to update reviewer info', e);
              }

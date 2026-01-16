@@ -11,15 +11,19 @@
     >
       <!-- Header -->
       <div class="flex justify-between items-start mb-2">
-        <div>
-          <h3 class="font-bold text-gray-900">{{ leave.name || leave.leaveType }}</h3>
-           <!-- Helper to show user name if supervisor, or show leave type if simple list -->
-           <!-- But wait, Staff view showed Type as H3. Supervisor view showed Name as H3. -->
-           <!-- Let's adapt based on showName prop -->
-          <span class="text-xs text-gray-500">
-             {{ leave.date }}
-             <span v-if="showName && leave.timestamp"> {{ leave.timestamp.split("T")[0] }} 申請</span>
-          </span>
+        <div class="space-y-1">
+          <div class="flex items-center space-x-2">
+             <h3 class="font-bold text-gray-900 text-base m-0">{{ leave.name || leave.leaveType }}</h3>
+             <span v-if="showName && leave.timestamp" class="text-xs text-gray-400 font-normal">
+               {{ leave.timestamp.split("T")[0] }}
+             </span>
+          </div>
+          
+          <div class="flex flex-col space-y-1">
+             <span class="text-sm font-medium text-gray-800">
+               請假日期：{{ leave.date }}
+             </span>
+          </div>
         </div>
         <span
           class="text-xs px-2 py-1 rounded-full font-medium"
@@ -31,23 +35,28 @@
 
       <!-- Details -->
       <div class="text-sm text-gray-600 space-y-1 mb-3">
-         <div v-if="showName">
-             <p>📝 原因: {{ leave.reason }}</p>
+         <div class="mb-1">
+             <p class="text-gray-700">
+                時間：{{ leave.timeSlot || '全天' }}
+             </p>
+         </div>
+         <div v-if="showName && leave.reason">
+             <p>原因：{{ leave.reason }}</p>
          </div>
          <div v-if="leave.cases?.length" class="mt-2 bg-gray-50 p-2 rounded-lg">
-             <p class="text-xs font-bold text-gray-500">受影響個案:</p>
-             <ul class="space-y-1 mt-1">
-                 <li v-for="(c, idx) in leave.cases" :key="idx" class="text-xs text-gray-700 flex justify-between">
-                     <span>{{ c.name }}</span><span class="text-gray-500">{{ c.time }}</span>
+             <p class="text-xs font-bold text-gray-500 mb-1">受影響個案:</p>
+             <ul class="space-y-1">
+                 <li v-for="(c, idx) in leave.cases" :key="idx" class="text-xs text-gray-700 flex justify-between items-center">
+                     <div class="flex items-center space-x-2">
+                        <span>{{ c.name }}</span>
+                        <span v-if="c.substitute" class="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[10px] font-bold">需代班</span>
+                     </div>
+                     <span class="text-gray-500 font-mono">{{ c.time }}</span>
                  </li>
              </ul>
          </div>
          <div v-if="leave.proofUrl" class="mt-2">
               <a :href="leave.proofUrl" target="_blank" class="text-indigo-600 text-xs hover:underline">📎 查看證明文件</a>
-         </div>
-         <!-- For simple Staff view, show simplified badge if not showing details -->
-         <div v-if="!showName" class="flex justify-end pt-2">
-              <span class="text-xs font-bold" :class="statusTextClass(leave.status)">{{ statusText(leave.status) }}</span>
          </div>
       </div>
 
