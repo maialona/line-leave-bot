@@ -208,10 +208,44 @@ const handleSubmit = () => {
 const handleFileUpload = (e) => {
   const file = e.target.files[0];
   if (!file) return;
+
+  // Compression Logic
   const reader = new FileReader();
-  reader.onload = (evt) => {
-    props.form.proofBase66 = evt.target.result.split(",")[1];
-    props.form.proofPreview = evt.target.result;
+  reader.onload = (event) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      // Max Dimension 1024px
+      const MAX_SIZE = 1024;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > MAX_SIZE) {
+          height *= MAX_SIZE / width;
+          width = MAX_SIZE;
+        }
+      } else {
+        if (height > MAX_SIZE) {
+          width *= MAX_SIZE / height;
+          height = MAX_SIZE;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Compress to JPEG 0.7
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      
+      // Store FULL Data URL (Backend utils will parse it)
+      props.form.proofBase66 = dataUrl; 
+      props.form.proofPreview = dataUrl;
+    };
+    img.src = event.target.result;
   };
   reader.readAsDataURL(file);
 };

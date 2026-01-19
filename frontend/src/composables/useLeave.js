@@ -168,11 +168,12 @@ export function useLeave(user) {
         });
         return true;
       } else {
-        addToast(data.message || "提交失敗", "error");
+        addToast(data.message || data.error || "提交失敗", "error");
         return false;
       }
     } catch (e) {
-      addToast("系統錯誤", "error");
+      console.error(e);
+      addToast("系統錯誤: " + (e.message || "未知原因"), "error");
       return false;
     } finally {
       submitting.value = false;

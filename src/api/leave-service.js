@@ -12,6 +12,10 @@ export async function submitLeave(request, env, ctx) {
         // Upload Image if exists
         let proofUrl = '';
         if (form.proofBase66) {
+            if (!env.DRIVE_FOLDER_ID) {
+                console.error("Missing DRIVE_FOLDER_ID env var");
+                throw new Error("系統設定錯誤: 缺少雲端硬碟 ID (DRIVE_FOLDER_ID)");
+            }
             proofUrl = await uploadImageToDrive(form.proofBase66, form.name, form.date, env.DRIVE_FOLDER_ID, token);
         }
 

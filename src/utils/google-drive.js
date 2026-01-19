@@ -8,7 +8,8 @@ export async function uploadImageToDrive(base66, name, date, folderId, token) {
 
     const payload = {
         type: 'upload',
-        base66: cleanBase66,
+        base66: cleanBase66, // New key
+        base64: cleanBase66, // Old key (Compatibility)
         mimeType: mimeType,
         name: `LeaveProof_${name}_${date}.jpg`,
         folderId: folderId
