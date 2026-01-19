@@ -26,9 +26,6 @@
 
     <!-- Supervisor Dashboard -->
     <div v-if="isSupervisor" class="flex-1 flex flex-col min-h-0">
-      <!-- User Info -->
-
-
       <!-- Tabs -->
       <div class="flex space-x-2 mb-4 border-b border-gray-200 flex-none">
         <button
@@ -121,16 +118,17 @@
          :showName="true" 
          :actions="activeTab === 'pending'"
          emptyMessage="沒有資料"
+         @batch-review="handleBatchReview"
       >
          <template #actions="{ leave }">
              <button
-              @click="reviewLeave(leave, 'approve')"
+              @click="handleSingleReview(leave, 'approve')"
               class="flex-1 bg-green-50 text-green-700 py-2 rounded-lg text-sm font-medium"
             >
               核准
             </button>
             <button
-              @click="reviewLeave(leave, 'reject')"
+              @click="handleSingleReview(leave, 'reject')"
               class="flex-1 bg-red-50 text-red-700 py-2 rounded-lg text-sm font-medium"
             >
               駁回
@@ -141,8 +139,6 @@
 
     <!-- Staff Form View -->
     <div v-else class="flex-1 flex flex-col min-h-0">
-
-
       <div class="flex space-x-2 mb-4 border-b border-gray-200 flex-none">
         <button
           @click="activeTab = 'apply'"
@@ -210,30 +206,64 @@
             </template>
         </LeaveList>
     </div>
-    </div>
+  </div>
+
+  <ConfirmModal
+      :is-open="confirmModal.isOpen"
+      :title="confirmModal.title"
+      :message="confirmModal.message"
+      :confirm-text="confirmModal.confirmText"
+      :confirm-button-class="confirmModal.confirmClass"
+      @confirm="executeConfirm"
+      @cancel="closeConfirmModal"
+  />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, reactive } from "vue";
 import Skeleton from "./Skeleton.vue";
 import LeaveForm from "./LeaveForm.vue";
 import LeaveList from "./LeaveList.vue";
+import ConfirmModal from "./ConfirmModal.vue";
 import { useLeave } from "../composables/useLeave.js";
 import { useUserStore } from "../stores/user.js";
+import { useToast } from "../composables/useToast.js";
 
 const store = useUserStore();
-// const props = defineProps(["user"]);
+const { addToast } = useToast();
 const emit = defineEmits(["back"]);
 
-const user = computed(() => store.user); // Added for template usage
+const user = computed(() => store.user);
 
-const activeTab = ref("pending"); // or 'apply'
+const activeTab = ref("pending");
 
 const {
     loading, submitting, allLeaves, isSupervisor, pendingLeaves, leaveForm,
     getLeaves, submitLeave, reviewLeave, cancelLeave
 } = useLeave(store.user);
+
+// Modal State
+const confirmModal = reactive({
+    isOpen: false,
+    title: '確認',
+    message: '',
+    confirmText: '確定',
+    confirmClass: 'bg-indigo-600',
+    onConfirm: null
+});
+
+const closeConfirmModal = () => {
+    confirmModal.isOpen = false;
+    confirmModal.onConfirm = null;
+};
+
+const executeConfirm = async () => {
+    if (confirmModal.onConfirm) {
+        await confirmModal.onConfirm();
+    }
+    closeConfirmModal();
+};
 
 const handleFormSubmit = async () => {
     const success = await submitLeave();
@@ -242,17 +272,65 @@ const handleFormSubmit = async () => {
     }
 };
 
+// Single Review (Modal Wrapper)
+const handleSingleReview = (leave, action) => {
+    const actionText = action === 'approve' ? '核准' : '駁回';
+    const isReject = action === 'reject';
+    
+    confirmModal.title = `${actionText}申請`;
+    confirmModal.message = `確定要${actionText} ${leave.name} 的請假申請嗎?`;
+    confirmModal.confirmText = actionText;
+    confirmModal.confirmClass = isReject ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700';
+    
+    confirmModal.onConfirm = async () => {
+        await reviewLeave(leave, action, true); // skipConfirm = true
+    };
+    confirmModal.isOpen = true;
+};
+
+// Batch Review (Refactored)
+const handleBatchReview = (leaves, action) => {
+    const name = leaves[0]?.name || '';
+    const actionText = action === 'approve' ? '核准' : '駁回';
+    
+    confirmModal.title = `批次${actionText}`;
+    confirmModal.message = `確定要一次 ${actionText} ${name} 的 ${leaves.length} 筆申請嗎?`;
+    confirmModal.confirmText = `確認${actionText}`;
+    confirmModal.confirmClass = 'bg-green-600 hover:bg-green-700';
+    
+    confirmModal.onConfirm = async () => {
+        // Group by timestamp
+        const uniqueTimestamps = [...new Set(leaves.map(l => l.timestamp))];
+        loading.value = true;
+        try {
+            for (const ts of uniqueTimestamps) {
+                 const target = leaves.find(l => l.timestamp === ts);
+                 if (target) {
+                     await reviewLeave(target, action, true, true); // skipConfirm = true, silent = true
+                 }
+            }
+            addToast(`已完成批次${actionText}`, 'success');
+        } catch(e) {
+            addToast("批次處理發生部分錯誤", "error");
+        } finally {
+            loading.value = false;
+        }
+    };
+    
+    confirmModal.isOpen = true;
+};
+
 const displayLeaves = computed(() => {
   if (activeTab.value === "pending") return pendingLeaves.value;
   return allLeaves.value;
 });
 
-// Stats for Supervisor (Keep local for now, could be extracted too)
+// Stats logic...
 const monthlyStats = computed(() => {
   const stats = {};
   allLeaves.value.forEach((l) => {
     if (l.status === "Approved") {
-      stats[l.name] = (stats[l.name] || 0) + 1; // Count days roughly
+      stats[l.name] = (stats[l.name] || 0) + 1;
     }
   });
   return Object.entries(stats)

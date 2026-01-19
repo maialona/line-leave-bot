@@ -180,8 +180,8 @@ export function useLeave(user) {
     }
   };
 
-  const reviewLeaveApplication = async (leave, action) => {
-    if (!confirm(`確定要${action === "approve" ? "核准" : "駁回"}?`)) return;
+  const reviewLeaveApplication = async (leave, action, skipConfirm = false, silent = false) => {
+    if (!skipConfirm && !confirm(`確定要${action === "approve" ? "核准" : "駁回"}?`)) return;
     try {
       const data = await reviewLeaveApi({
         uid: user.uid,
@@ -191,7 +191,7 @@ export function useLeave(user) {
         name: leave.name,
       });
       if (data.success) {
-        addToast("OK", "success");
+        if (!silent) addToast("OK", "success");
         getLeaves();
       } else {
         addToast("Fail: " + data.message, "error");
