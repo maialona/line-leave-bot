@@ -32,10 +32,18 @@ export const useUserStore = defineStore("user", {
                 idToken: null
             };
         } else {
-            await liff.init({ liffId: LiquerId });
+            // timeout wrapper for liff.init
+            const initPromise = liff.init({ liffId: LiquerId });
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error("LIFF Initialization Timed Out")), 10000)
+            );
+
+            await Promise.race([initPromise, timeoutPromise]);
+
             if (!liff.isLoggedIn()) {
-                liff.login();
-                return;
+                console.log("User not logged in, redirecting...");
+                liff.login({ redirectUri: window.location.href });
+                return; // Stop execution, browser will redirect
             }
             const profile = await liff.getProfile();
             this.auth = {
