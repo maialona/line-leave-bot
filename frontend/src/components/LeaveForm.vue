@@ -103,49 +103,72 @@
           <label for="noCase" class="ml-2 text-sm text-gray-600 font-medium">此時段無排定服務個案</label>
       </div>
 
-      <div v-if="!form.noCase" class="space-y-3">
+      <div v-if="!form.noCase" class="space-y-4">
         <div
             v-for="(caseItem, cIdx) in form.cases"
             :key="cIdx"
-            class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm"
+            class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
         >
-            <div class="flex justify-between items-center mb-2">
-                <input
-                    v-model="caseItem.caseName"
-                    placeholder="個案姓名"
-                    class="font-bold text-gray-800 w-2/3 border-b border-gray-300 focus:border-indigo-500 px-1 py-1"
-                />
-                <button type="button" @click="removeCase(cIdx)" class="text-xs text-red-500">移除個案</button>
+            <!-- Case Header -->
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1 mr-4">
+                    <label class="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wide">個案姓名</label>
+                    <input
+                        v-model="caseItem.caseName"
+                        placeholder="請輸入姓名"
+                        class="w-full text-lg font-bold text-gray-800 border-b-2 border-gray-100 focus:border-primary-500 transition-colors bg-transparent px-1 py-1 placeholder:font-normal placeholder:text-gray-300 outline-none"
+                    />
+                </div>
+                <button type="button" @click="removeCase(cIdx)" class="text-gray-300 hover:text-danger-500 transition-colors p-2 rounded-full hover:bg-danger-50" title="移除此個案">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
             </div>
             
             <!-- Time Slots -->
-            <div class="space-y-2 pl-2 border-l-2 border-indigo-100">
-                <div v-for="(slot, sIdx) in caseItem.slots" :key="sIdx" class="flex items-center space-x-2">
-                    <input
-                        type="time"
-                        v-model="slot.startTime"
-                        class="text-sm w-24 rounded border-gray-300 px-1 py-1"
-                    />
-                    <span class="text-gray-400">-</span>
-                    <input
-                        type="time"
-                        v-model="slot.endTime"
-                        class="text-sm w-24 rounded border-gray-300 px-1 py-1"
-                    />
-                    <label class="flex items-center cursor-pointer">
-                        <input type="checkbox" v-model="slot.substitute" class="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500 mr-1" />
-                        <span class="text-xs text-gray-600">代</span>
+            <div class="space-y-3">
+                <div v-for="(slot, sIdx) in caseItem.slots" :key="sIdx" class="grid grid-cols-[1fr_auto_auto] items-center gap-3 bg-gray-50 pl-3 py-3 pr-5 rounded-xl border border-gray-100 group">
+                    <!-- Time Range Inputs -->
+                    <div class="flex items-center gap-2 min-w-0 overflow-hidden">
+                         <div class="relative flex-1 min-w-0">
+                            <input
+                                type="time"
+                                v-model="slot.startTime"
+                                class="w-full bg-white rounded-lg border-gray-200 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent py-2 pl-1 shadow-sm"
+                            />
+                         </div>
+                         <div class="relative flex-1 min-w-0">
+                            <input
+                                type="time"
+                                v-model="slot.endTime"
+                                class="w-full bg-white rounded-lg border-gray-200 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent py-2 pl-1 shadow-sm"
+                            />
+                         </div>
+                    </div>
+
+                    <!-- Substitute Toggle Badge -->
+                    <label 
+                        class="cursor-pointer flex items-center justify-center w-10 h-9 rounded-lg border transition-all select-none flex-shrink-0"
+                        :class="slot.substitute ? 'bg-danger-50 border-danger-200 text-danger-600' : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300 hover:bg-gray-50'"
+                        title="切換代班狀態"
+                    >
+                        <input type="checkbox" v-model="slot.substitute" class="hidden" />
+                        <span class="text-sm font-bold leading-none">代</span>
                     </label>
-                    <button type="button" @click="removeSlot(cIdx, sIdx)" class="text-gray-400 hover:text-red-500">
-                        ×
+                    
+                    <!-- Remove Slot Button -->
+                    <button type="button" @click="removeSlot(cIdx, sIdx)" class="flex-shrink-0 text-gray-300 hover:text-danger-500 transition-colors p-2 rounded-full hover:bg-danger-50">
+                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
+                
+                <!-- Add Slot Button -->
                 <button
                     type="button"
                     @click="addSlot(cIdx)"
-                    class="text-xs text-indigo-600 hover:text-indigo-800 mt-1 flex items-center"
+                    class="w-full py-2.5 border-2 border-dashed border-primary-100 text-primary-500 rounded-xl hover:bg-primary-50 hover:border-primary-200 transition-all text-sm font-bold flex items-center justify-center group"
                 >
-                    + 新增時段
+                    <svg class="w-4 h-4 mr-1 transform group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    新增時段
                 </button>
             </div>
         </div>
@@ -155,7 +178,7 @@
     <button
       type="submit"
       :disabled="submitting"
-      class="w-full btn-primary text-white font-bold py-3 rounded-xl shadow-lg disabled:opacity-50"
+      class="w-full bg-primary-600 hover:bg-primary-700 transition-colors text-white font-bold py-3 rounded-xl shadow-lg disabled:opacity-50"
     >
       {{ submitting ? "送出中..." : "送出申請" }}
     </button>

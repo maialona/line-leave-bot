@@ -38,16 +38,41 @@ export async function getAccessToken(env) {
 }
 
 export async function importPrivateKey(pem) {
-    const binaryDerString = atob(pem.replace('-----BEGIN PRIVATE KEY-----', '').replace('-----END PRIVATE KEY-----', '').replace(/\s/g, ''));
-    const binaryDer = new Uint8Array(binaryDerString.length);
-    for (let i = 0; i < binaryDerString.length; i++) {
-        binaryDer[i] = binaryDerString.charCodeAt(i);
+    if (!pem) throw new Error("Private Key is missing");
+    
+    try {
+        // 1. Remove Headers (if any) and handle literal \n
+        let body = pem
+            .replace(/\\n/g, '') // Fix: Remove literal backslash-n sequences
+            .replace(/["']/g, '') // Remove quotes if user wrapped them
+            .replace('-----BEGIN PRIVATE KEY-----', '')
+            .replace('-----END PRIVATE KEY-----', '');
+        
+        // 2. Remove all non-base64 characters (whitespace, newlines, etc.)
+        let cleaned = body.replace(/[^A-Za-z0-9+/=]/g, '');
+
+        // 3. Fix Padding
+        while (cleaned.length % 4 !== 0) {
+            cleaned += '=';
+        }
+
+        const binaryDerString = atob(cleaned);
+
+        const binaryDer = new Uint8Array(binaryDerString.length);
+        for (let i = 0; i < binaryDerString.length; i++) {
+            binaryDer[i] = binaryDerString.charCodeAt(i);
+        }
+        return crypto.subtle.importKey(
+            'pkcs8',
+            binaryDer.buffer,
+            { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+            false,
+            ['sign']
+        );
+    } catch (e) {
+        console.error("Import Private Key Failed:", e);
+        // Extract a safe sample length for debugging
+        const len = pem ? pem.length : 0;
+        throw new Error(`Private Key Error (Len: ${len}): ${e.message}`);
     }
-    return crypto.subtle.importKey(
-        'pkcs8',
-        binaryDer.buffer,
-        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-        false,
-        ['sign']
-    );
 }

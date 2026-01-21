@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 animate-fade-in">
+  <div v-if="isOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 animate-fade-in">
     <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-scale-in">
       <h3 class="text-lg font-bold text-gray-900 mb-2">{{ title }}</h3>
       <p class="text-sm text-gray-600 mb-6">{{ message }}</p>
@@ -13,8 +13,8 @@
         </button>
         <button
           @click="$emit('confirm')"
-          class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
-          :class="confirmButtonClass"
+          class="flex-1 px-4 py-2 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+          :class="confirmButtonClass || 'bg-indigo-600 hover:bg-indigo-700'"
         >
           {{ confirmText }}
         </button>

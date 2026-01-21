@@ -528,3 +528,65 @@ export async function checkPendingCaseReminders(env) {
         console.error('Reminder Job Failed:', e);
     }
 }
+
+export async function revokeCase(request, env) {
+    try {
+        const { uid, timestamp } = await request.json();
+        const token = await getAccessToken(env);
+
+        // 1. Get User Info (for ownership check)
+        const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${env.SHEET_ID}`;
+        const metaResp = await fetch(metaUrl, { headers: { Authorization: `Bearer ${token}` } });
+        const metaData = await metaResp.json();
+        const firstSheetName = metaData.sheets[0].properties.title;
+        const staffRows = await getSheetData(env.SHEET_ID, `${firstSheetName}!A2:F`, token);
+        const user = staffRows.find(r => r[3] === uid); // Find by UID
+        
+        if (!user) return { success: false, message: 'User not found' };
+        const userName = user[1];
+
+        // 2. Find Case
+        const rows = await getSheetData(env.SHEET_ID, 'Case_Applications!A:K', token);
+        if (rows.length < 2) return { success: false, message: 'No cases found' };
+
+        const header = rows[0];
+        const schema = {
+            timestamp: ['Timestamp', '時間戳記', '填寫時間'],
+            status: ['Status', '狀態', '審核狀態'],
+            applicant: ['Applicant', '申請人']
+        };
+        const colMap = mapHeadersToIndexes(header, schema);
+        if (colMap.timestamp === -1) colMap.timestamp = 0;
+        if (colMap.status === -1) colMap.status = 10;
+        if (colMap.applicant === -1) colMap.applicant = 2;
+
+        let rowIndex = -1;
+        for (let i = 1; i < rows.length; i++) {
+            if (rows[i][colMap.timestamp] === timestamp) {
+                rowIndex = i + 1;
+                
+                // Ownership Check
+                if (rows[i][colMap.applicant] !== userName) {
+                     return { success: false, message: 'Permission denied' };
+                }
+                
+                // Status Check
+                if (rows[i][colMap.status] !== CASE_STATUS.PENDING) {
+                     return { success: false, message: 'Cannot revoke processed case' };
+                }
+
+                break;
+            }
+        }
+
+        if (rowIndex > -1) {
+            const statusCol = colIndexToLetter(colMap.status);
+            await updateSheetCell(env.SHEET_ID, `Case_Applications!${statusCol}${rowIndex}`, CASE_STATUS.CANCELLED, token);
+            return { success: true };
+        }
+
+        return { success: false, message: 'Case not found' };
+    } catch (e) {
+        throw e;
+    }
+}

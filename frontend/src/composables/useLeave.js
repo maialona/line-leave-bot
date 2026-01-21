@@ -201,8 +201,8 @@ export function useLeave(user) {
     }
   };
 
-  const cancelLeaveApplication = async (leave) => {
-    if (!confirm("確定撤回?")) return;
+  const cancelLeaveApplication = async (leave, skipConfirm = false) => {
+    if (!skipConfirm && !confirm("確定撤回?")) return;
     try {
       const data = await cancelLeaveApi({ uid: user.uid, timestamp: leave.timestamp });
       if (data.success) {

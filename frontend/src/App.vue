@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 h-[100dvh] w-full bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-4 overflow-hidden overscroll-none">
+  <div class="fixed inset-0 h-[100dvh] w-full bg-gradient-to-br from-primary-50 via-white to-primary-100 flex items-center justify-center p-4 overflow-hidden overscroll-none">
     <ToastContainer />
     <!-- Loading State -->
     <div
@@ -7,9 +7,9 @@
       class="absolute inset-0 flex flex-col items-center justify-center z-50 bg-white/50 backdrop-blur-sm rounded-2xl h-96"
     >
       <div
-        class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"
+        class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"
       ></div>
-      <p class="mt-4 text-indigo-800 font-medium">載入中...</p>
+      <p class="mt-4 text-primary-800 font-medium">載入中...</p>
     </div>
 
     <!-- Main Content -->
@@ -152,13 +152,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-.btn-primary {
-  background: linear-gradient(90deg, #78B8A7 0%, #A8EB12 100%);
-  transition: all 0.3s ease;
-}
-.btn-primary:active {
-  transform: scale(0.98);
-}
+
 
 .fade-enter-active,
 .fade-leave-active {

@@ -16,12 +16,12 @@
         <div class="flex-1 overflow-y-auto p-5 space-y-6">
              <div class="space-y-1">
                 <label class="block text-sm font-bold text-gray-700">標題</label>
-                <input v-model="form.title" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-4 font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="請輸入標題" />
+                <input v-model="form.title" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-4 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all" placeholder="請輸入標題" />
              </div>
              
              <div class="space-y-1">
                 <label class="block text-sm font-bold text-gray-700">內容</label>
-                <textarea v-model="form.content" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-4 h-32 font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all leading-relaxed" placeholder="請輸入公告完整內容..."></textarea>
+                <textarea v-model="form.content" class="w-full rounded-xl border border-gray-200 bg-gray-50 p-4 h-32 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all leading-relaxed" placeholder="請輸入公告完整內容..."></textarea>
              </div>
              
              <div class="grid grid-cols-2 gap-4">
@@ -87,15 +87,15 @@
              </div>
 
              <!-- Push Notification Checkbox -->
-             <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-start space-x-3">
+             <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start space-x-3">
                  <div class="flex items-center h-5">
-                    <input type="checkbox" id="notify" v-model="form.notify" class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300" />
+                    <input type="checkbox" id="notify" v-model="form.notify" class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300" />
                  </div>
                  <div class="flex flex-col">
-                    <label for="notify" class="text-sm font-bold text-indigo-900">
+                    <label for="notify" class="text-sm font-bold text-blue-900">
                         發送 LINE 推播通知
                     </label>
-                    <span class="text-xs text-indigo-600 mt-1">
+                    <span class="text-xs text-blue-600 mt-1">
                         勾選後將會消耗 LINE 官方帳號的訊息額度。<br>建議僅在「重要/緊急」公告時使用。
                     </span>
                  </div>
@@ -107,7 +107,7 @@
             <button 
               @click="submitBulletin" 
               :disabled="submitting"
-              class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/30 active:scale-95 transition-all flex justify-center items-center text-lg"
+              class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30 active:scale-95 transition-all flex justify-center items-center text-lg"
             >
                <svg v-if="!submitting" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
                <span v-if="submitting">處理中...</span>
@@ -138,7 +138,7 @@
                  :key="cat.id"
                  @click="activeCategory = cat.id"
                  class="px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors"
-                 :class="activeCategory === cat.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
+                 :class="activeCategory === cat.id ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
                >
                  {{ cat.label }}
                </button>
@@ -149,14 +149,14 @@
                     v-if="canCreate"
                     @click="toggleManagementView"
                     class="bg-gray-100 text-gray-600 p-2 rounded-full shadow hover:bg-gray-200 transition-colors"
-                    :class="{ 'bg-indigo-100 text-indigo-600': isManagementView }"
+                    :class="{ 'bg-blue-100 text-blue-600': isManagementView }"
                 >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                 </button>
                 <button 
                 v-if="canCreate"
                 @click="isCreating = true"
-                class="bg-lime-400 text-white p-2 rounded-full shadow-lg hover:bg-lime-500 transition-colors transform active:scale-95"
+                class="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-colors transform active:scale-95"
                 >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 </button>
@@ -182,7 +182,7 @@
               v-for="item in filteredBulletins"
               :key="item.id"
               class="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all relative overflow-hidden"
-              :class="{'border-l-4 border-l-red-400': item.priority === 'High'}"
+              :class="{'border-l-4 border-l-danger-400': item.priority === 'High'}"
             >
                 <!-- Clickable Header (Always Visible) -->
                 <div 
@@ -198,9 +198,9 @@
                             >
                               {{ item.category }}
                             </span>
-                            <span v-if="item.priority === 'High'" class="text-[10px] bg-red-100 text-red-500 px-2 py-0.5 rounded font-bold flex-shrink-0">重要</span>
+                            <span v-if="item.priority === 'High'" class="text-[10px] bg-danger-100 text-danger-500 px-2 py-0.5 rounded font-bold flex-shrink-0">重要</span>
                             <span v-if="canCreate && item.status === BULLETIN_STATUS.DRAFT" class="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-bold flex-shrink-0">草稿</span>
-                            <span v-if="canCreate && item.status === BULLETIN_STATUS.SCHEDULED" class="text-[10px] bg-lime-100 text-lime-700 px-2 py-0.5 rounded font-bold flex-shrink-0">排程 ({{ item.scheduledTime }})</span>
+                            <span v-if="canCreate && item.status === BULLETIN_STATUS.SCHEDULED" class="text-[10px] bg-warning-100 text-warning-700 px-2 py-0.5 rounded font-bold flex-shrink-0">排程 ({{ item.scheduledTime }})</span>
                             <span class="text-[10px] text-gray-400 flex-shrink-0">{{ formatDate(item.timestamp) }}</span>
                          </div>
                          <!-- Title -->
@@ -230,11 +230,11 @@
                             <button 
                                 v-if="!isRead(item)"
                                 @click.stop="signBulletin(item)"
-                                class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full border border-indigo-200 hover:bg-indigo-100 transition-colors flex items-center font-bold"
+                                class="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full border border-blue-200 hover:bg-blue-100 transition-colors flex items-center font-bold"
                             >
                                 <span>我已閱讀</span>
                             </button>
-                            <span v-else class="text-xs text-green-600 flex items-center bg-green-50 px-2 py-0.5 rounded-full font-bold">
+                            <span v-else class="text-xs text-success-600 flex items-center bg-success-50 px-2 py-0.5 rounded-full font-bold">
                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                                 已讀
                             </span>
@@ -243,7 +243,7 @@
                             <button 
                             v-if="canCreate && item.author === user.name" 
                             @click.stop="deleteItem(item.id)"
-                            class="text-gray-300 hover:text-red-500 transition-colors ml-2"
+                            class="text-gray-300 hover:text-danger-500 transition-colors ml-2"
                             >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
@@ -254,7 +254,7 @@
                     <div v-if="canCreate && item.status !== BULLETIN_STATUS.DRAFT" class="mt-3 pt-3 border-t border-gray-100">
                          <button 
                            @click.stop="showStats(item)"
-                           class="w-full flex items-center justify-center space-x-2 text-indigo-600 hover:bg-indigo-50 py-2 rounded-lg transition-colors font-bold text-sm"
+                           class="w-full flex items-center justify-center space-x-2 text-blue-600 hover:bg-blue-50 py-2 rounded-lg transition-colors font-bold text-sm"
                          >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                             <span>查看已讀狀況</span>
@@ -314,12 +314,23 @@
             </div>
         </div>
     </div>
+
+    <ConfirmModal 
+        :isOpen="showConfirmModal"
+        title="刪除確認"
+        message="確定要刪除此公告嗎？此動作無法復原。"
+        confirmText="確認刪除"
+        confirmButtonClass="bg-red-600 hover:bg-red-700"
+        @confirm="confirmDelete"
+        @cancel="showConfirmModal = false"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import Skeleton from "./Skeleton.vue";
+import ConfirmModal from "./ConfirmModal.vue";
 import { BULLETIN_STATUS, ROLES } from "../constants/common.js";
 import { useToast } from "../composables/useToast.js";
 import { useUserStore } from "../stores/user.js";
@@ -347,6 +358,10 @@ const statsModal = ref({
     bulletinTitle: '',
     data: { total: 0, read: 0, unread: 0, unreadList: [] }
 });
+
+// Confirm Modal
+const showConfirmModal = ref(false);
+const itemToDelete = ref(null);
 
 function toggleItem(id) {
     if (expandedItems.value.has(id)) {
@@ -443,12 +458,19 @@ async function submitBulletin() {
 }
 
 async function deleteItem(id) {
-    if (!confirm('確定刪除此公告？')) return;
+    itemToDelete.value = id;
+    showConfirmModal.value = true;
+}
+
+async function confirmDelete() {
+    if (!itemToDelete.value) return;
+    showConfirmModal.value = false;
+
     try {
         const res = await fetch('/api/bulletin/delete', {
             method: 'POST',
             body: JSON.stringify({ 
-                id, 
+                id: itemToDelete.value, 
                 role: user.value.role,
                 userName: user.value.name 
             })
@@ -457,6 +479,9 @@ async function deleteItem(id) {
         if (data.success) fetchBulletins();
         else addToast(data.message, 'error');
     } catch(e) { addToast('Delete Error', 'error'); }
+    finally {
+        itemToDelete.value = null;
+    }
 }
 
 function getCategoryColor(cat) {

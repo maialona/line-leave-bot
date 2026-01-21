@@ -39,14 +39,14 @@
          <div class="mt-8 space-y-4">
             <button
             @click="$emit('enter')"
-            class="w-full btn-primary text-white font-bold py-4 px-10 rounded-xl shadow-lg hover:shadow-xl transform active:scale-95 transition-all duration-200"
+            class="w-full bg-[#79bbaa] text-white font-bold py-4 px-10 rounded-xl shadow-lg hover:shadow-xl hover:bg-[#6aa494] transform active:scale-95 transition-all duration-200"
             >
             進入系統
             </button>
             
             <button
             @click="isRebinding = true"
-            class="text-sm text-indigo-500 font-medium hover:text-indigo-700 py-2"
+            class="text-sm text-[#79bbaa] font-medium hover:text-[#6aa494] py-2"
             >
             ＋ 綁定其他身份 / 重新綁定
             </button>
@@ -65,7 +65,7 @@
         >
         <select
           v-model="regForm.unit"
-          class="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-3 px-4 bg-white/80 backdrop-blur-sm transition-all duration-300 hover:shadow-md"
+          class="w-full rounded-xl border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 py-3 px-4 bg-white/80 backdrop-blur-sm transition-all duration-300 hover:shadow-md"
         >
           <option disabled value="">請選擇單位</option>
           <option
@@ -84,7 +84,7 @@
           v-model="regForm.name"
           type="text"
           placeholder="請輸入真實姓名"
-          class="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-3 px-4 bg-white/80 backdrop-blur-sm transition-all duration-300 hover:shadow-md"
+          class="w-full rounded-xl border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 py-3 px-4 bg-white/80 backdrop-blur-sm transition-all duration-300 hover:shadow-md"
         />
       </div>
 
@@ -95,14 +95,14 @@
         <input
           v-model="regForm.staffId"
           type="text"
-          class="w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-3 px-4 bg-white/80 backdrop-blur-sm transition-all duration-300 hover:shadow-md"
+          class="w-full rounded-xl border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 py-3 px-4 bg-white/80 backdrop-blur-sm transition-all duration-300 hover:shadow-md"
         />
       </div>
 
       <button
         @click="bindUser"
         :disabled="submitting"
-        class="w-full btn-primary text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transform active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+        class="w-full bg-[#79bbaa] text-white hover:bg-[#6aa494] font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transform active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
       >
         <span v-if="submitting" class="animate-spin mr-2">⏳</span>
         {{ submitting ? "綁定中..." : "開始使用" }}
@@ -111,7 +111,7 @@
       <button
         v-if="user && user.profiles && user.profiles.length > 1"
         @click="showRoleSelector = true"
-        class="w-full text-indigo-600 font-bold hover:text-indigo-800 text-sm py-3 mt-2"
+        class="w-full text-primary-600 font-bold hover:text-primary-800 text-sm py-3 mt-2"
       >
         切換角色 ({{ user.profiles.length }})
       </button>
@@ -130,8 +130,8 @@
           v-for="p in user.profiles"
           :key="p.unit + p.name"
           @click="selectProfile(p)"
-          class="w-full p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all text-left bg-white"
-          :class="{'border-indigo-500 ring-2 ring-indigo-200': user.unit === p.unit && user.name === p.name}"
+          class="w-full p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-primary-300 transition-all text-left bg-white"
+          :class="{'border-primary-500 ring-2 ring-primary-200': user.unit === p.unit && user.name === p.name}"
         >
           <div class="font-bold text-gray-800">{{ p.name }}</div>
           <div class="text-sm text-gray-500">{{ p.unit }} - {{ p.role }}</div>
@@ -149,7 +149,6 @@
 
 <script setup>
 import { ref, computed } from "vue";
-import liff from "@line/liff";
 import { useToast } from "../composables/useToast.js";
 import { useUserStore } from "../stores/user.js";
 
@@ -186,13 +185,13 @@ const bindUser = async () => {
 
   submitting.value = true;
   try {
-    const profile = await liff.getProfile();
+    const { uid, idToken } = store.getAuth();
     const res = await fetch("/api/bind-user", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        uid: profile.userId,
-        idToken: liff.getIDToken(),
+        uid: uid,
+        idToken: idToken,
         unit: regForm.value.unit,
         name: regForm.value.name,
         staffId: regForm.value.staffId,
@@ -203,7 +202,7 @@ const bindUser = async () => {
     if (data.success) {
       addToast("綁定成功！歡迎使用", "success");
       emit("user-bound", {
-        uid: profile.userId,
+        uid: uid,
         name: regForm.value.name,
         unit: regForm.value.unit,
         role: data.role || "居服員", 

@@ -28,11 +28,11 @@
     <div v-if="isSupervisor" class="flex-1 flex flex-col min-h-0">
       <!-- Tabs -->
       <div class="flex space-x-2 mb-4 border-b border-gray-200 flex-none">
-        <button
+          <button
           @click="activeTab = 'pending'"
           :class="
             activeTab === 'pending'
-              ? 'border-indigo-500 text-indigo-600'
+              ? 'border-primary-500 text-primary-600'
               : 'text-gray-500'
           "
           class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent hover:text-gray-700"
@@ -40,7 +40,7 @@
           待審核
           <span
             v-if="pendingLeaves.length > 0"
-            class="ml-1 bg-red-100 text-red-600 py-0.5 px-2 rounded-full text-xs"
+            class="ml-1 bg-danger-100 text-danger-600 py-0.5 px-2 rounded-full text-xs"
             >{{ pendingLeaves.length }}</span
           >
         </button>
@@ -48,7 +48,7 @@
           @click="activeTab = 'history'"
           :class="
             activeTab === 'history'
-              ? 'border-indigo-500 text-indigo-600'
+              ? 'border-primary-500 text-primary-600'
               : 'text-gray-500'
           "
           class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent hover:text-gray-700"
@@ -59,7 +59,7 @@
           @click="activeTab = 'ranking'"
           :class="
             activeTab === 'ranking'
-              ? 'border-indigo-500 text-indigo-600'
+              ? 'border-primary-500 text-primary-600'
               : 'text-gray-500'
           "
           class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent hover:text-gray-700"
@@ -91,18 +91,18 @@
                     <span
                     class="inline-flex items-center justify-center w-6 h-6 rounded-full mr-2 text-xs"
                     :class="{
-                        'bg-yellow-100 text-yellow-700 font-bold': idx < 3,
+                        'bg-warning-100 text-warning-700 font-bold': idx < 3,
                         'bg-gray-100 text-gray-500': idx >= 3,
                     }"
                     >{{ idx + 1 }}</span
                     >
                     {{ stat.name }}
                 </span>
-                <span class="text-indigo-600 font-bold">{{ stat.days }} 天</span>
+                <span class="text-primary-600 font-bold">{{ stat.days }} 天</span>
                 </div>
                 <div class="bg-gray-100 rounded-full h-2.5 ml-8">
                 <div
-                    class="bg-indigo-500 h-2.5 rounded-full animate-bar"
+                    class="bg-primary-500 h-2.5 rounded-full animate-bar"
                     :style="{ width: (stat.days / maxDays) * 100 + '%' }"
                 ></div>
                 </div>
@@ -123,13 +123,13 @@
          <template #actions="{ leave }">
              <button
               @click="handleSingleReview(leave, 'approve')"
-              class="flex-1 bg-green-50 text-green-700 py-2 rounded-lg text-sm font-medium"
+              class="flex-1 bg-success-50 text-success-700 py-2 rounded-lg text-sm font-medium"
             >
               核准
             </button>
             <button
               @click="handleSingleReview(leave, 'reject')"
-              class="flex-1 bg-red-50 text-red-700 py-2 rounded-lg text-sm font-medium"
+              class="flex-1 bg-danger-50 text-danger-700 py-2 rounded-lg text-sm font-medium"
             >
               駁回
             </button>
@@ -144,7 +144,7 @@
           @click="activeTab = 'apply'"
           :class="
             activeTab === 'apply'
-              ? 'border-indigo-500 text-indigo-600'
+              ? 'border-primary-500 text-primary-600'
               : 'text-gray-500'
           "
           class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent"
@@ -155,7 +155,7 @@
           @click="activeTab = 'my_records'"
           :class="
             activeTab === 'my_records'
-              ? 'border-indigo-500 text-indigo-600'
+              ? 'border-primary-500 text-primary-600'
               : 'text-gray-500'
           "
           class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent"
@@ -198,8 +198,8 @@
             <template #actions="{ leave }">
                 <button
                    v-if="leave.status === 'Pending'"
-                   @click="cancelLeave(leave)"
-                   class="w-full bg-red-50 text-red-600 py-1 rounded text-sm"
+                   @click="handleRevokeLeave(leave)"
+                   class="w-full bg-danger-50 text-danger-600 py-1 rounded text-sm hover:bg-danger-100 transition-colors"
                  >
                    撤回
                  </button>
@@ -249,7 +249,7 @@ const confirmModal = reactive({
     title: '確認',
     message: '',
     confirmText: '確定',
-    confirmClass: 'bg-indigo-600',
+    confirmClass: 'bg-primary-600',
     onConfirm: null
 });
 
@@ -280,10 +280,23 @@ const handleSingleReview = (leave, action) => {
     confirmModal.title = `${actionText}申請`;
     confirmModal.message = `確定要${actionText} ${leave.name} 的請假申請嗎?`;
     confirmModal.confirmText = actionText;
-    confirmModal.confirmClass = isReject ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700';
+    confirmModal.confirmClass = isReject ? 'bg-danger-600 hover:bg-danger-700' : 'bg-success-600 hover:bg-success-700';
     
     confirmModal.onConfirm = async () => {
         await reviewLeave(leave, action, true); // skipConfirm = true
+    };
+    confirmModal.isOpen = true;
+};
+
+// Revoke Leave (Modal Wrapper)
+const handleRevokeLeave = (leave) => {
+    confirmModal.title = '確認撤回';
+    confirmModal.message = '確定要撤回這筆請假申請嗎?';
+    confirmModal.confirmText = '確定撤回';
+    confirmModal.confirmClass = 'bg-danger-600 hover:bg-danger-700';
+    
+    confirmModal.onConfirm = async () => {
+        await cancelLeave(leave, true); // skipConfirm = true
     };
     confirmModal.isOpen = true;
 };
@@ -296,7 +309,7 @@ const handleBatchReview = (leaves, action) => {
     confirmModal.title = `批次${actionText}`;
     confirmModal.message = `確定要一次 ${actionText} ${name} 的 ${leaves.length} 筆申請嗎?`;
     confirmModal.confirmText = `確認${actionText}`;
-    confirmModal.confirmClass = 'bg-green-600 hover:bg-green-700';
+    confirmModal.confirmClass = 'bg-success-600 hover:bg-success-700';
     
     confirmModal.onConfirm = async () => {
         // Group by timestamp
@@ -319,6 +332,7 @@ const handleBatchReview = (leaves, action) => {
     
     confirmModal.isOpen = true;
 };
+
 
 const displayLeaves = computed(() => {
   if (activeTab.value === "pending") return pendingLeaves.value;

@@ -4,7 +4,7 @@ import { cors } from 'hono/cors';
 import { checkUser, bindUser } from './api/user-service.js';
 import { submitLeave, getLeaves, reviewLeave, cancelLeave } from './api/leave-service.js';
 import { webhookHandler } from './api/webhook-handler.js';
-import { submitCase, getCases, reviewCase, checkPendingCaseReminders, getCaseRanking } from './api/case-service.js';
+import { submitCase, getCases, reviewCase, checkPendingCaseReminders, getCaseRanking, revokeCase } from './api/case-service.js';
 import { whisperHandlers } from './api/whisper-service.js';
 import { bulletinHandlers } from './api/bulletin-service.js';
 
@@ -66,6 +66,7 @@ app.post('/api/submit-case', wrap(submitCase));
 app.post('/api/get-cases', wrap(getCases));
 app.post('/api/review-case', wrap(reviewCase));
 app.post('/api/get-case-ranking', wrap(getCaseRanking));
+app.post('/api/revoke-case', wrap(revokeCase));
 
 // Whisper API
 app.get('/api/whisper/recipients', wrap(whisperHandlers.getRecipients)); // GET? Old code was POST for all? 

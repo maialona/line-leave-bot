@@ -10,26 +10,47 @@ export const useUserStore = defineStore("user", {
     units: [],
     loading: true,
     initialized: false,
+    auth: {
+      uid: null,
+      idToken: null,
+    }
   }),
   actions: {
+    getAuth() {
+        return this.auth;
+    },
+
     async initialize() {
       const { addToast } = useToast();
+      
+      // 1. Authenticate (Dev or LIFF)
       try {
-        await liff.init({ liffId: LiquerId });
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
+        if (import.meta.env.DEV) {
+            console.log("Dev Mode: Using Mock User");
+            this.auth = {
+                uid: 'MOCK_DEV_USER_001',
+                idToken: null
+            };
+        } else {
+            await liff.init({ liffId: LiquerId });
+            if (!liff.isLoggedIn()) {
+                liff.login();
+                return;
+            }
+            const profile = await liff.getProfile();
+            this.auth = {
+                uid: profile.userId,
+                idToken: liff.getIDToken()
+            };
         }
 
-        const profile = await liff.getProfile();
-        const idToken = liff.getIDToken();
-
+        // 2. Check User Status with Backend
         const res = await fetch("/api/check-user", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
-              uid: profile.userId,
-              idToken: idToken
+              uid: this.auth.uid,
+              idToken: this.auth.idToken
           }),
         });
 
@@ -39,7 +60,7 @@ export const useUserStore = defineStore("user", {
 
           if (data.registered) {
             this.user = {
-              uid: profile.userId,
+              uid: this.auth.uid,
               name: data.profiles[0].name,
               unit: data.profiles[0].unit,
               role: data.profiles[0].role,
@@ -47,7 +68,13 @@ export const useUserStore = defineStore("user", {
             };
           }
         } else {
-          addToast("檢查使用者狀態失敗", "error");
+          try {
+            const errData = await res.json();
+            console.error("Check User Failed:", errData);
+            addToast("檢查使用者失敗: " + (errData.error || "未知錯誤"), "error");
+          } catch (e) {
+             addToast("檢查使用者失敗 (500)", "error");
+          }
         }
       } catch (e) {
         console.error("Init Error:", e);

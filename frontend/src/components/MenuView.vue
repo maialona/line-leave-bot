@@ -33,13 +33,13 @@
           <span class="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded-full">督導</span>
         </div>
       </div>
-      <div v-else class="mt-4 flex items-center justify-between bg-indigo-50 p-3 rounded-lg text-left">
+      <div v-else class="mt-4 flex items-center justify-between bg-primary-50 p-3 rounded-lg text-left">
         <div>
-          <span class="text-indigo-900 font-medium block">👋 你好，{{ user.name }}</span>
+          <span class="text-primary-900 font-medium block">👋 你好，{{ user.name }}</span>
         </div>
         <div class="flex space-x-1">
-          <span class="text-xs bg-white text-indigo-600 border border-indigo-200 px-2 py-1 rounded-full">{{ user.unit }}</span>
-          <span class="text-xs bg-indigo-200 text-indigo-800 px-2 py-1 rounded-full">{{ user.role || '居服員' }}</span>
+          <span class="text-xs bg-white text-primary-600 border border-primary-200 px-2 py-1 rounded-full">{{ user.unit }}</span>
+          <span class="text-xs bg-primary-200 text-primary-800 px-2 py-1 rounded-full">{{ user.role || '居服員' }}</span>
         </div>
       </div>
     </div>
@@ -74,23 +74,23 @@
       <!-- Leave Application -->
       <div
         @click="$emit('navigate', 'leave')"
-        class="menu-item group hover:border-indigo-200"
+        class="menu-item group hover:border-primary-200"
       >
         <div
-          class="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300"
+          class="w-12 h-12 rounded-full bg-primary-50 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300"
         >
           📝
         </div>
         <div class="text-left flex-1 min-w-0">
           <h3
-            class="font-bold text-gray-800 truncate group-hover:text-indigo-600 transition-colors"
+            class="font-bold text-gray-800 truncate group-hover:text-primary-600 transition-colors"
           >
             請假申請
           </h3>
           <p class="text-xs text-gray-500 truncate">申請事假、病假</p>
         </div>
         <div
-          class="text-gray-300 group-hover:text-indigo-500 transition-colors transform group-hover:translate-x-1"
+          class="text-gray-300 group-hover:text-primary-500 transition-colors transform group-hover:translate-x-1"
         >
           →
         </div>
@@ -150,23 +150,23 @@
       <div
         v-if="isSupervisor"
         @click="$emit('navigate', 'refusal_report')"
-        class="menu-item group hover:border-red-200"
+        class="menu-item group hover:border-danger-200"
       >
         <div
-          class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300"
+          class="w-12 h-12 rounded-full bg-danger-50 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300"
         >
           🚫
         </div>
         <div class="text-left flex-1 min-w-0">
           <h3
-            class="font-bold text-gray-800 truncate group-hover:text-red-600 transition-colors"
+            class="font-bold text-gray-800 truncate group-hover:text-danger-600 transition-colors"
           >
             拒案通報站
           </h3>
           <p class="text-xs text-gray-500 truncate">通報拒案居服員</p>
         </div>
         <div
-          class="text-gray-300 group-hover:text-red-500 transition-colors transform group-hover:translate-x-1"
+          class="text-gray-300 group-hover:text-danger-500 transition-colors transform group-hover:translate-x-1"
         >
           →
         </div>

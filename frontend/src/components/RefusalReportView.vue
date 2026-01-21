@@ -1,10 +1,10 @@
 <template>
   <div class="flex flex-col h-full animate-fade-in">
     <!-- Header -->
-    <div class="mb-4 relative text-center">
+    <div class="mb-4 flex items-center justify-between px-1">
       <button
         @click="$emit('back')"
-        class="absolute left-0 top-1 text-gray-400 hover:text-gray-600 p-2"
+        class="text-gray-400 hover:text-gray-600 p-2 -ml-2"
       >
         <svg
           class="w-6 h-6"
@@ -20,10 +20,10 @@
           ></path>
         </svg>
       </button>
-      <h2 class="text-xl font-bold text-gray-800">拒案通報站</h2>
+      <h2 class="text-xl font-bold text-gray-800 flex-1 text-center">拒案通報站</h2>
       <button
         @click="showInfo = true"
-        class="absolute right-0 top-1 text-gray-400 hover:text-blue-500 p-2 transition-colors"
+        class="text-gray-400 hover:text-primary-500 p-2 -mr-2 transition-colors"
       >
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -35,13 +35,13 @@
     <div class="flex space-x-2 mb-4 px-1">
       <button
         @click="activeTab = 'form'"
-        :class="['flex-1 py-2 rounded-lg text-sm font-bold transition-colors', activeTab === 'form' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200']"
+        :class="['flex-1 py-2 rounded-lg text-sm font-bold transition-colors', activeTab === 'form' ? 'bg-danger-100 text-danger-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200']"
       >
         通報表單
       </button>
       <button
         @click="activeTab = 'records'"
-        :class="['flex-1 py-2 rounded-lg text-sm font-bold transition-colors', activeTab === 'records' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200']"
+        :class="['flex-1 py-2 rounded-lg text-sm font-bold transition-colors', activeTab === 'records' ? 'bg-danger-100 text-danger-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200']"
       >
         通報紀錄
       </button>
@@ -57,7 +57,7 @@
           v-model="form.supervisorName"
           type="text"
           placeholder="請輸入姓名"
-          class="w-full rounded-xl border-gray-300 py-3 px-4 shadow-sm border focus:ring-red-500 focus:border-red-500"
+          class="w-full rounded-xl border-gray-300 py-3 px-4 shadow-sm border focus:ring-danger-500 focus:border-danger-500"
         />
       </div>
 
@@ -66,7 +66,7 @@
         <label class="block text-sm font-bold text-gray-700 mb-1">居服員所屬機構</label>
         <select
           v-model="form.agency"
-          class="w-full rounded-xl border-gray-300 py-3 px-4 shadow-sm border focus:ring-red-500 focus:border-red-500 bg-white"
+          class="w-full rounded-xl border-gray-300 py-3 px-4 shadow-sm border focus:ring-danger-500 focus:border-danger-500 bg-white"
         >
           <option disabled value="">請選擇機構</option>
           <option v-for="unit in units" :key="unit" :value="unit">
@@ -82,7 +82,7 @@
           v-model="form.attendantName"
           type="text"
           placeholder="請輸入服務員姓名"
-          class="w-full rounded-xl border-gray-300 py-3 px-4 shadow-sm border focus:ring-red-500 focus:border-red-500"
+          class="w-full rounded-xl border-gray-300 py-3 px-4 shadow-sm border focus:ring-danger-500 focus:border-danger-500"
         />
       </div>
 
@@ -92,7 +92,7 @@
         <input
           v-model="form.refusalDate"
           type="date"
-          class="w-full rounded-xl border-gray-300 py-3 px-4 shadow-sm border focus:ring-red-500 focus:border-red-500"
+          class="w-full rounded-xl border-gray-300 py-3 px-4 shadow-sm border focus:ring-danger-500 focus:border-danger-500"
         />
       </div>
 
@@ -101,19 +101,19 @@
         <label class="block text-sm font-bold text-gray-700 mb-2">狀況評估</label>
         <div class="space-y-3">
           <label class="flex items-start space-x-3 cursor-pointer">
-             <input type="checkbox" v-model="form.assessments" :value="options[0]" class="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500">
+             <input type="checkbox" v-model="form.assessments" :value="options[0]" class="mt-1 w-5 h-5 text-danger-600 rounded border-gray-300 focus:ring-danger-500">
              <span class="text-sm text-gray-700">{{ options[0] }}</span>
           </label>
           <label class="flex items-start space-x-3 cursor-pointer">
-             <input type="checkbox" v-model="form.assessments" :value="options[1]" class="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500">
+             <input type="checkbox" v-model="form.assessments" :value="options[1]" class="mt-1 w-5 h-5 text-danger-600 rounded border-gray-300 focus:ring-danger-500">
              <span class="text-sm text-gray-700">{{ options[1] }}</span>
           </label>
           <label class="flex items-start space-x-3 cursor-pointer">
-             <input type="checkbox" v-model="form.assessments" :value="options[2]" class="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500">
+             <input type="checkbox" v-model="form.assessments" :value="options[2]" class="mt-1 w-5 h-5 text-danger-600 rounded border-gray-300 focus:ring-danger-500">
              <span class="text-sm text-gray-700">{{ options[2] }}</span>
           </label>
           <label class="flex items-start space-x-3 cursor-pointer">
-             <input type="checkbox" v-model="form.assessments" :value="options[3]" class="mt-1 w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500">
+             <input type="checkbox" v-model="form.assessments" :value="options[3]" class="mt-1 w-5 h-5 text-danger-600 rounded border-gray-300 focus:ring-danger-500">
              <span class="text-sm text-gray-700">{{ options[3] }}</span>
           </label>
         </div>
@@ -126,7 +126,7 @@
           v-model="form.reason"
           rows="4"
           placeholder="請詳述拒接案原因..."
-          class="w-full rounded-xl border-gray-300 py-3 px-4 shadow-sm border focus:ring-red-500 focus:border-red-500 resize-none"
+          class="w-full rounded-xl border-gray-300 py-3 px-4 shadow-sm border focus:ring-danger-500 focus:border-danger-500 resize-none"
         ></textarea>
       </div>
 
@@ -135,7 +135,7 @@
           <button
             @click="submit"
             :disabled="submitting"
-            class="w-full bg-red-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-red-700 transform active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            class="w-full bg-danger-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-danger-700 transform active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {{ submitting ? "提交中..." : "送出通報" }}
           </button>
@@ -172,7 +172,7 @@
                            <div class="font-bold text-gray-800 text-lg">{{ rec.attendant }}</div>
                         </div>
                     </div>
-                    <div class="bg-red-50 text-red-600 font-bold px-4 py-2 rounded-lg text-lg">
+                    <div class="bg-danger-50 text-danger-600 font-bold px-4 py-2 rounded-lg text-lg">
                         {{ rec.count }} <span class="text-xs font-normal">次</span>
                     </div>
                 </div>
@@ -201,9 +201,9 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
             <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                <span class="text-blue-500 mr-2">ℹ️</span> 拒接案評估原則
+                <span class="text-primary-500 mr-2">ℹ️</span> 拒接案評估原則
             </h3>
-            <ul class="space-y-3 text-sm text-gray-600 list-decimal pl-5 leading-relaxed bg-blue-50 p-4 rounded-lg">
+            <ul class="space-y-3 text-sm text-gray-600 list-decimal pl-5 leading-relaxed bg-primary-50 p-4 rounded-lg">
                 <li>督導員會依排班原則以及居服員接班空檔及需要車程來做安排。</li>
                 <li>若居服員在體況、班表等評估因素下經督導評估可接班狀況而拒絕接班者。</li>
                 <li>請督導員協助做相關紀錄後續以方便做居服員相關考核業務負責人會在行政會議前將數據抓出列入討論。</li>

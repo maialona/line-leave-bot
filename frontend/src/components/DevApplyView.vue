@@ -44,16 +44,7 @@
 
     <!-- Tabs (All Roles) -->
     <div class="mb-4">
-      <div v-if="isSupervisor" class="flex items-center justify-center space-x-2 mb-2">
-        <span
-          class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full"
-          >{{ user.role }}</span
-        >
-        <span
-          class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full"
-          >{{ user.unit }}</span
-        >
-      </div>
+
       <div class="flex space-x-2 bg-gray-100 p-1 rounded-lg">
         <button
           @click="activeTab = 'apply'"
@@ -148,6 +139,7 @@
         沒有待審核案件
       </div>
       <div
+        v-else
         v-for="c in pendingCases"
         :key="c.timestamp"
         class="bg-white border border-green-100 rounded-xl p-4 shadow-sm relative overflow-hidden"
@@ -194,7 +186,7 @@
           <button
             v-if="c.status === CASE_STATUS.PENDING && c.applyTypes.includes('開發')"
             @click="openNoteModal(c)"
-            class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium shadow"
+            class="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium shadow"
           >
             受理/記事本
           </button>
@@ -202,7 +194,7 @@
           <!-- Processing: Show Approve (Check Maturity) -->
           <button
             v-else-if="c.status === CASE_STATUS.PROCESSING && !c.applyTypes.includes('開發')"
-            @click="reviewCase(c, 'approve')"
+            @click="openApproveModal(c)"
             :disabled="getDaysRemaining(c.firstServiceDate) > 0"
             class="flex-1 py-2 rounded-lg text-sm font-medium shadow transition-colors"
             :class="getDaysRemaining(c.firstServiceDate) > 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white'"
@@ -213,7 +205,7 @@
           <button
             v-else-if="c.status === CASE_STATUS.PROCESSING && c.applyTypes.includes('開發')"
             @click="openNoteModal(c)"
-            class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium shadow"
+            class="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium shadow"
           >
             記事本/結算
           </button>
@@ -401,7 +393,7 @@
         <div v-else v-for="c in myCases" :key="c.timestamp" class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm relative overflow-hidden">
              <!-- Status Stripe -->
              <div class="absolute top-0 left-0 w-1 h-full" 
-                  :class="c.status === CASE_STATUS.APPROVED ? 'bg-green-500' : c.status === CASE_STATUS.REJECTED ? 'bg-red-500' : 'bg-yellow-400'">
+                  :class="c.status === CASE_STATUS.APPROVED ? 'bg-green-500' : c.status === CASE_STATUS.REJECTED ? 'bg-red-500' : c.status === CASE_STATUS.CANCELLED ? 'bg-gray-400' : 'bg-yellow-400'">
              </div>
              
              <div class="pl-2">
@@ -411,8 +403,8 @@
                          <span class="text-xs text-gray-500">{{ c.timestamp.split('T')[0] }}</span>
                      </div>
                      <span class="text-xs px-2 py-1 rounded-full font-bold"
-                           :class="c.status === CASE_STATUS.APPROVED ? 'bg-green-100 text-green-800' : c.status === CASE_STATUS.REJECTED ? 'bg-red-100 text-red-800' : c.status === CASE_STATUS.PROCESSING ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'">
-                         {{ c.status === CASE_STATUS.APPROVED ? '已核准' : c.status === CASE_STATUS.REJECTED ? '已駁回' : c.status === CASE_STATUS.PROCESSING ? '受理中' : '審核中' }}
+                           :class="c.status === CASE_STATUS.APPROVED ? 'bg-green-100 text-green-800' : c.status === CASE_STATUS.REJECTED ? 'bg-red-100 text-red-800' : c.status === CASE_STATUS.CANCELLED ? 'bg-gray-200 text-gray-600' : c.status === CASE_STATUS.PROCESSING ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'">
+                         {{ c.status === CASE_STATUS.APPROVED ? '已核准' : c.status === CASE_STATUS.REJECTED ? '已駁回' : c.status === CASE_STATUS.CANCELLED ? '已撤回' : c.status === CASE_STATUS.PROCESSING ? '受理中' : '審核中' }}
                      </span>
                  </div>
                  
@@ -448,10 +440,20 @@
                      
                      <!-- Staff Note Button -->
                      <div v-if="c.applyTypes.includes('開發') && (c.status === CASE_STATUS.PROCESSING || c.status === CASE_STATUS.APPROVED)" class="mt-2">
+
                         <button @click="openNoteModal(c, true)" class="text-blue-600 text-sm flex items-center hover:underline">
                             <span class="mr-1">📝</span> 查看開發記事本
                         </button>
                      </div>
+
+                     <!-- Revoke Button -->
+                     <button 
+                        v-if="c.status === CASE_STATUS.PENDING"
+                        @click="openRevokeModal(c)"
+                        class="w-full mt-3 bg-red-50 text-red-600 py-2 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+                     >
+                        撤回申請
+                     </button>
                  </div>
              </div>
         </div>
@@ -609,7 +611,17 @@
           </div>
      </div>
      
-     <!-- Reject Modal -->
+     <!-- Confirm Modal -->
+     <ConfirmModal 
+        :is-open="confirmModal.isOpen"
+        :title="confirmModal.title"
+        :message="confirmModal.message"
+        :confirm-text="confirmModal.confirmText"
+        :confirm-button-class="confirmModal.confirmClass"
+        @confirm="executeConfirm"
+        @cancel="closeConfirmModal"
+     />
+   <!-- Reject Modal -->
      <div v-if="showRejectModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in">
           <div class="bg-white w-full max-w-xs rounded-xl shadow-xl p-6">
               <h3 class="font-bold text-lg mb-2 text-gray-900">確定駁回此案件？</h3>
@@ -630,77 +642,80 @@
                 <button @click="showNoteModal = false" class="text-gray-400 hover:text-gray-600">✕</button>
             </div>
             
-            <div class="p-4 overflow-y-auto flex-1 space-y-4">
+            <div class="p-4 overflow-y-auto flex-1 space-y-5">
                 <!-- Info -->
-                <div class="bg-blue-50 p-3 rounded-lg text-sm text-blue-900 grid grid-cols-2 gap-2">
-                    <p><span class="font-bold">申請人:</span> {{ targetCase?.applicant }}</p>
-                    <p><span class="font-bold">個案:</span> {{ targetCase?.caseName }}</p>
+                <div class="bg-gray-50 p-4 rounded-xl text-sm text-gray-600 grid grid-cols-2 gap-4 border border-gray-100">
+                    <p><span class="font-bold text-gray-800">申請人:</span> {{ targetCase?.applicant }}</p>
+                    <p><span class="font-bold text-gray-800">個案:</span> {{ targetCase?.caseName }}</p>
                 </div>
 
                 <!-- Table -->
-                <div class="border rounded-lg overflow-hidden">
+                <div class="border border-gray-100 rounded-xl overflow-hidden shadow-sm">
                     <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-50 text-gray-700">
+                        <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
                             <tr>
-                                <th class="p-2">月份</th>
-                                <th class="p-2 text-right">初始計畫額度</th>
-                                <th class="p-2 text-right">實際使用額度</th>
-                                <th class="p-2 text-right">開發獎金</th>
-                                <th v-if="!isReadOnly" class="p-2 w-8"></th>
+                                <th class="p-3 font-normal whitespace-nowrap">月份</th>
+                                <th class="p-3 text-right font-normal whitespace-nowrap">初始計畫額度</th>
+                                <th class="p-3 text-right font-normal whitespace-nowrap">實際使用額度</th>
+                                <th class="p-3 text-right font-normal whitespace-nowrap">開發獎金</th>
+                                <th v-if="!isReadOnly" class="p-3 w-8"></th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
+                        <tbody class="divide-y divide-gray-50">
                             <tr v-if="noteDetails.length === 0">
-                                <td colspan="5" class="p-4 text-center text-gray-400">尚無紀錄</td>
+                                <td colspan="5" class="p-8 text-center text-gray-400 text-xs">尚無紀錄，請新增資料</td>
                             </tr>
-                            <tr v-for="(item, idx) in noteDetails" :key="idx" class="hover:bg-gray-50">
-                                <td class="p-2">{{ item.month }}</td>
-                                <td class="p-2 text-right">{{ item.initialAmount }}</td>
-                                <td class="p-2 text-right">{{ item.amount }}</td>
-                                <td class="p-2 text-right font-bold text-blue-600">{{ Math.round((item.amount - item.initialAmount) * 0.08) }}</td>
-                                <td v-if="!isReadOnly" class="p-2 text-center">
-                                    <button @click="removeNoteRow(idx)" class="text-red-400 hover:text-red-600">×</button>
+                            <tr v-for="(item, idx) in noteDetails" :key="idx" class="hover:bg-gray-50 transition-colors">
+                                <td class="p-3 text-gray-800 font-medium whitespace-nowrap">{{ item.month }}</td>
+                                <td class="p-3 text-right text-gray-600 whitespace-nowrap">{{ item.initialAmount }}</td>
+                                <td class="p-3 text-right text-gray-600 whitespace-nowrap">{{ item.amount }}</td>
+                                <td class="p-3 text-right font-bold text-green-600 whitespace-nowrap">+{{ Math.round((item.amount - item.initialAmount) * 0.08) }}</td>
+                                <td v-if="!isReadOnly" class="p-3 text-center">
+                                    <button @click="removeNoteRow(idx)" class="w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">×</button>
                                 </td>
                             </tr>
-
                         </tbody>
                     </table>
                 </div>
                 
                 <!-- Add Form (Supervisor Only) -->
-                <div v-if="!isReadOnly" class="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                    <h4 class="font-bold text-gray-700 mb-3 text-sm">新增紀錄</h4>
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                        <div>
-                            <label class="text-xs text-gray-500 block mb-1">月份</label>
-                            <select v-model="newNote.month" class="w-full text-sm border-gray-300 rounded p-1.5">
+                <div v-if="!isReadOnly" class="bg-white rounded-xl">
+                    <h4 class="font-bold text-gray-800 mb-4 flex items-center text-sm">
+                        <span class="w-1 h-4 bg-green-500 rounded-full mr-2"></span>新增紀錄
+                    </h4>
+                    <div class="grid grid-cols-12 gap-3 mb-3 items-end">
+                        <div class="col-span-4">
+                            <label class="text-xs text-gray-400 block mb-1 ml-1">月份</label>
+                            <select v-model="newNote.month" class="w-full text-sm border-gray-200 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all bg-gray-50 focus:bg-white">
                                 <option v-for="m in monthOptions" :key="m" :value="m">{{ m }}</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="text-xs text-gray-500 block mb-1">初始計畫額度 ($)</label>
-                            <input v-model="newNote.initialAmount" type="number" class="w-full text-sm border-gray-300 rounded p-1.5" placeholder="0">
+                        <div class="col-span-3">
+                            <label class="text-xs text-gray-400 block mb-1 ml-1">初始 ($)</label>
+                            <input v-model="newNote.initialAmount" type="number" class="w-full text-sm border-gray-200 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all bg-gray-50 focus:bg-white" placeholder="0">
                         </div>
-                        <div>
-                            <label class="text-xs text-gray-500 block mb-1">實際使用額度 ($)</label>
-                            <input v-model="newNote.amount" type="number" class="w-full text-sm border-gray-300 rounded p-1.5" placeholder="0">
+                        <div class="col-span-3">
+                            <label class="text-xs text-gray-400 block mb-1 ml-1">實用 ($)</label>
+                            <input v-model="newNote.amount" type="number" class="w-full text-sm border-gray-200 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all bg-gray-50 focus:bg-white" placeholder="0">
+                        </div>
+                        <div class="col-span-2">
+                             <button @click="addNoteRow" class="w-full h-[42px] flex items-center justify-center bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm relative top-[1px]">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            </button>
                         </div>
                     </div>
-                    <button @click="addNoteRow" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-bold shadow hover:bg-indigo-700 transition">
-                        + 新增一列
-                    </button>
                 </div>
             </div>
             
             <div class="p-4 border-t flex space-x-3 shrink-0">
-                <button @click="showNoteModal = false" class="flex-1 py-3 rounded-xl border border-gray-300 text-gray-600 font-bold hover:bg-gray-50">
+                <button @click="showNoteModal = false" class="flex-1 py-3 rounded-xl text-gray-500 font-medium hover:bg-gray-50 transition-colors">
                     {{ isReadOnly ? '關閉' : '取消' }}
                 </button>
                 <template v-if="!isReadOnly">
-                    <button @click="saveNote('accept')" class="flex-1 py-3 rounded-xl bg-yellow-500 text-white font-bold hover:bg-yellow-600 shadow-lg">
+                    <button @click="saveNote('accept')" class="flex-1 py-3 rounded-xl bg-white border border-yellow-400 text-yellow-600 font-bold hover:bg-yellow-50 transition-colors">
                         暫存 (受理中)
                     </button>
-                    <button @click="saveNote('approve')" class="flex-1 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 shadow-lg">
+                    <button @click="saveNote('approve')" class="flex-1 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all">
                         結算 (已核准)
                     </button>
                 </template>
@@ -710,9 +725,11 @@
    </div>
  </template>
 
+
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
 import Skeleton from "./Skeleton.vue";
+import ConfirmModal from "./ConfirmModal.vue"; // Added
 import { CASE_STATUS, ROLES } from "../constants/common.js";
 import { useToast } from "../composables/useToast.js";
 import { useUserStore } from "../stores/user.js";
@@ -795,13 +812,24 @@ const openAcceptModal = (c) => {
 };
 
 const confirmAccept = async () => {
-    if(!acceptDate.value) return alert('請選擇日期');
+    if(!acceptDate.value) return addToast('請選擇日期', 'warning');
     await reviewCase(targetCase.value, 'accept', acceptDate.value);
     showAcceptModal.value = false;
 };
 
 const showRejectModal = ref(false);
 const rejectReason = ref('');
+
+const openApproveModal = (c) => {
+    confirmModal.title = '確認核准';
+    confirmModal.message = '確定核准此案件?';
+    confirmModal.confirmText = '確定核准';
+    confirmModal.confirmClass = 'bg-green-600 hover:bg-green-700';
+    confirmModal.onConfirm = async () => {
+        await reviewCase(c, 'approve');
+    };
+    confirmModal.isOpen = true;
+};
 
 const openRejectModal = (c) => {
     targetCase.value = c;
@@ -810,7 +838,7 @@ const openRejectModal = (c) => {
 };
 
 const confirmReject = async () => {
-    if(!rejectReason.value) return alert('請輸入駁回原因');
+    if(!rejectReason.value) return addToast('請輸入駁回原因', 'warning');
     await reviewCase(targetCase.value, 'reject', null, rejectReason.value);
     showRejectModal.value = false;
 };
@@ -846,7 +874,7 @@ const openNoteModal = (c, readonly = false) => {
 };
 
 const addNoteRow = () => {
-    if(!newNote.month || !newNote.amount) return alert('請填寫完整');
+    if(!newNote.month || !newNote.amount) return addToast('請填寫完整', 'warning');
     noteDetails.value.push({ ...newNote });
     // Reset fields except month
     Object.assign(newNote, { initialAmount: '', amount: '' });
@@ -857,14 +885,20 @@ const removeNoteRow = (idx) => {
 };
 
 const saveNote = async (action) => {
-    if (noteDetails.value.length === 0) return alert('記事本不能為空');
-    if (!confirm(action === 'approve' ? '確定結算？案件將變更為已核准' : '確定暫存？案件將變更為受理中')) return;
+    if (noteDetails.value.length === 0) return addToast('記事本不能為空', 'warning');
     
-    // Attach details to targetCase so reviewCase picks it up
-    targetCase.value.devDetails = noteDetails.value;
+    confirmModal.title = action === 'approve' ? '確認結算' : '確認暫存';
+    confirmModal.message = action === 'approve' ? '確定結算？案件將變更為已核准' : '確定暫存？案件將變更為受理中';
+    confirmModal.confirmText = '確定';
+    confirmModal.confirmClass = action === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-yellow-500 hover:bg-yellow-600 text-white';
     
-    await reviewCase(targetCase.value, action);
-    showNoteModal.value = false;
+    confirmModal.onConfirm = async () => {
+        // Attach details to targetCase so reviewCase picks it up
+        targetCase.value.devDetails = noteDetails.value;
+        await reviewCase(targetCase.value, action);
+        showNoteModal.value = false;
+    };
+    confirmModal.isOpen = true;
 };
 
 
@@ -939,16 +973,6 @@ const fetchRanking = async () => {
 };
 
 const reviewCase = async (c, action, dateString = null, reason = null) => {
-  if (action === 'approve' && !confirm(`確定核准?`)) return; // Only confirm for approve, modals for others logic handle themselves (wait, accept has modal too)
-  // Actually, accept/reject have their own modals now, so we can remove generic confirm for them.
-  // Or just keep it simple. The modals call this function directly. 
-  // Let's remove the confirm if it's coming from a modal action (accept/reject).
-  // But wait, the button calls 'approve' directly.
-  
-  if (action === 'approve') {
-       if(!confirm('確定核准?')) return;
-  }
-  
   try {
     const res = await fetch("/api/review-case", {
       method: "POST",
@@ -964,12 +988,59 @@ const reviewCase = async (c, action, dateString = null, reason = null) => {
       }),
     });
     if ((await res.json()).success) {
-      alert("已更新");
+      addToast("已更新", "success");
       fetchCases();
-    } else alert("失敗");
+    } else addToast("更新失敗", "error");
   } catch (e) {
-    alert("Error");
+    addToast("發生錯誤", "error");
   }
+};
+
+const confirmModal = reactive({
+    isOpen: false,
+    title: '確認',
+    message: '',
+    confirmText: '確定',
+    confirmClass: 'bg-primary-600',
+    onConfirm: null
+});
+
+const closeConfirmModal = () => {
+    confirmModal.isOpen = false;
+    confirmModal.onConfirm = null;
+};
+
+const executeConfirm = async () => {
+    if (confirmModal.onConfirm) {
+        await confirmModal.onConfirm();
+    }
+    closeConfirmModal();
+};
+
+const openRevokeModal = (c) => {
+    confirmModal.title = '確認撤回';
+    confirmModal.message = `確定要撤回 ${c.caseName} 的申請嗎?`;
+    confirmModal.confirmText = '確定撤回';
+    confirmModal.confirmClass = 'bg-red-600 hover:bg-red-700';
+    
+    confirmModal.onConfirm = async () => {
+        try {
+            const res = await fetch("/api/revoke-case", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ uid: user.value.uid, timestamp: c.timestamp }),
+            });
+            if ((await res.json()).success) {
+                addToast("已撤回", "success");
+                fetchCases();
+            } else {
+                addToast("撤回失敗", "error");
+            }
+        } catch (e) {
+            addToast("Error", "error");
+        }
+    };
+    confirmModal.isOpen = true;
 };
 
 onMounted(() => {
@@ -1001,3 +1072,9 @@ onMounted(() => {
   animation: grow-bar 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 </style>
+
+<!-- Add Modal -->
+<!-- We need to ensure it's inside the template root or recognized (SFC handles multiple roots in Vue 3, but best to be safe). 
+However, replace_file_content works on text. I will invoke a replace for the end of template if possible, or just append to end of file? 
+No, component must be registered. 
+Let's add it inside the template. The template ends around line 702. -->

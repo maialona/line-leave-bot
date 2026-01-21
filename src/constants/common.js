@@ -15,7 +15,8 @@ export const CASE_STATUS = {
     PENDING: 'Pending',
     PROCESSING: 'Processing',
     APPROVED: 'Approved',
-    REJECTED: 'Rejected'
+    REJECTED: 'Rejected',
+    CANCELLED: 'Cancelled'
 };
 
 export const BULLETIN_STATUS = {

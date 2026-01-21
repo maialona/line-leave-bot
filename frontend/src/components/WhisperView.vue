@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full animate-fade-in">
+  <div class="flex flex-col h-full animate-fade-in relative">
     <!-- Header -->
     <div class="mb-4 relative text-center flex-none">
       <button
@@ -106,7 +106,7 @@
           v-model="searchQuery"
           type="text" 
           placeholder="搜尋主旨或內容..." 
-          class="w-full pl-9 pr-4 py-2 bg-gray-100 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all border-none"
+          class="w-full pl-9 pr-4 py-2 bg-gray-100 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-pink-500 transition-all border-none"
         >
         <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
         <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600">
@@ -122,7 +122,7 @@
           @click="selectedCategory = cat"
           class="flex-shrink-0 px-3 py-1 rounded-full text-xs font-bold transition-all border"
           :class="selectedCategory === cat 
-            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105' 
+            ? 'bg-pink-600 text-white border-pink-600 shadow-md transform scale-105' 
             : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'"
         >
           {{ cat }}
@@ -135,7 +135,7 @@
       <div v-if="!isSupervisor" class="mb-4 flex-none">
         <button
           @click="startCreate"
-          class="w-full btn-primary text-white py-3 rounded-xl shadow-md font-bold flex items-center justify-center space-x-2"
+          class="w-full bg-pink-600 hover:bg-pink-700 transition-colors text-white py-3 rounded-xl shadow-md font-bold flex items-center justify-center space-x-2"
         >
           <span>✏️</span><span>新增悄悄話</span>
         </button>
@@ -210,8 +210,8 @@
               {{ r.name }}
             </option>
           </select>
-          <div class="mt-2 flex items-center">
-            <input type="checkbox" id="anon" v-model="form.isAnonymous" class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
+            <div class="mt-2 flex items-center">
+            <input type="checkbox" id="anon" v-model="form.isAnonymous" class="w-4 h-4 text-pink-600 rounded border-gray-300 focus:ring-pink-500">
             <label for="anon" class="ml-2 text-sm text-gray-700 font-bold">🤫 匿名發送</label>
             </div>
         </div>
@@ -245,7 +245,7 @@
         <button
           @click="submit"
           :disabled="submitting"
-          class="w-full btn-primary text-white py-3 rounded-xl font-bold disabled:opacity-50"
+          class="w-full bg-pink-600 hover:bg-pink-700 transition-colors text-white py-3 rounded-xl font-bold disabled:opacity-50"
         >
           {{ submitting ? "傳送中..." : "送出" }}
         </button>
@@ -274,7 +274,7 @@
                     :class="[
                         'max-w-[80%] p-3 rounded-2xl text-sm shadow-sm relative',
                         (isSupervisor && msg.role === 'supervisor') || (!isSupervisor && msg.role === 'staff') 
-                            ? 'bg-indigo-600 text-white rounded-tr-none' 
+                            ? 'bg-pink-600 text-white rounded-tr-none' 
                             : 'bg-white text-gray-800 border border-gray-200 rounded-tl-none'
                     ]"
                 >
@@ -301,7 +301,7 @@
             v-for="reply in quickReplies" 
             :key="reply"
             @click="useQuickReply(reply)"
-            class="flex-shrink-0 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-indigo-100 border border-indigo-200 transition-colors whitespace-nowrap"
+            class="flex-shrink-0 bg-pink-50 text-pink-700 px-3 py-1.5 rounded-full text-xs font-bold hover:bg-pink-100 border border-pink-200 transition-colors whitespace-nowrap"
           >
             {{ reply }}
           </button>
@@ -310,7 +310,7 @@
         <div class="bg-white border-t p-3 pb-10 flex items-end space-x-2">
         <textarea
           v-model="replyText"
-          class="flex-1 rounded-xl border-gray-300 p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 resize-none h-12 max-h-32 transition-all"
+          class="flex-1 rounded-xl border-gray-300 p-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-pink-500 resize-none h-12 max-h-32 transition-all"
           placeholder="輸入訊息..."
           rows="1"
           @focus="$event.target.rows = 3"
@@ -319,12 +319,22 @@
         <button
           @click="sendReply"
           :disabled="submitting || !replyText.trim()"
-          class="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+          class="bg-pink-600 text-white p-3 rounded-xl hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
         </button>
       </div>
     </div>
+    <!-- Confirm Modal -->
+    <ConfirmModal
+      :is-open="confirmModal.isOpen"
+      :title="confirmModal.title"
+      :message="confirmModal.message"
+      :confirm-text="confirmModal.confirmText"
+      :confirm-button-class="confirmModal.confirmClass"
+      @confirm="executeConfirm"
+      @cancel="closeConfirmModal"
+    />
   </div>
 </template>
 
@@ -333,6 +343,7 @@ import { ref, reactive, computed, onMounted, nextTick, watch } from "vue";
 import Skeleton from "./Skeleton.vue";
 import { useToast } from "../composables/useToast.js";
 import { useUserStore } from "../stores/user.js";
+import ConfirmModal from "./ConfirmModal.vue"; // Added import
 
 const { addToast } = useToast();
 const store = useUserStore();
@@ -589,24 +600,52 @@ const sendReply = async () => {
   submitting.value = false;
 };
 
-const deleteWhisper = async () => {
-  if (!confirm("確定刪除?")) return;
-  submitting.value = true;
-  try {
-    const res = await fetch("/api/whisper/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: currentMsg.value.id }),
-    });
-    if ((await res.json()).success) {
-      addToast("已刪除", "success");
-      list.value = list.value.filter((m) => m.id !== currentMsg.value.id);
-      mode.value = "list";
+const confirmModal = reactive({
+    isOpen: false,
+    title: '確認',
+    message: '',
+    confirmText: '確定',
+    confirmClass: 'bg-primary-600',
+    onConfirm: null
+});
+
+const closeConfirmModal = () => {
+    confirmModal.isOpen = false;
+    confirmModal.onConfirm = null;
+};
+
+const executeConfirm = async () => {
+    if (confirmModal.onConfirm) {
+        await confirmModal.onConfirm();
     }
-  } catch (e) {
-    addToast("Error", "error");
-  }
-  submitting.value = false;
+    closeConfirmModal();
+};
+
+const deleteWhisper = () => {
+    confirmModal.title = '確認刪除';
+    confirmModal.message = '確定要刪除這則悄悄話嗎?';
+    confirmModal.confirmText = '確定刪除';
+    confirmModal.confirmClass = 'bg-pink-600 hover:bg-pink-700';
+    
+    confirmModal.onConfirm = async () => {
+        submitting.value = true;
+        try {
+            const res = await fetch("/api/whisper/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: currentMsg.value.id }),
+            });
+            if ((await res.json()).success) {
+            addToast("已刪除", "success");
+            list.value = list.value.filter((m) => m.id !== currentMsg.value.id);
+            mode.value = "list";
+            }
+        } catch (e) {
+            addToast("Error", "error");
+        }
+        submitting.value = false;
+    };
+    confirmModal.isOpen = true;
 };
 
 onMounted(() => {
@@ -627,3 +666,45 @@ onMounted(() => {
   }
 }
 </style>
+
+<!-- Add Modal to Template (must be at root or safe place) -->
+<!-- Actually it should be inside the root div, so we need to find where the root div closes. -->
+<!-- Warning: The view_file output was truncated so checking End of file might be risky if </template> was not shown.-->
+<!-- Let's check line 142/143 where template seemingly ended in previous view? No that was script. -->
+<!-- Wait, the template starts at line 1. Code is single file component. -->
+<!-- I need to insert the Modal at the end of the template. -->
+<!-- Let's verify where </template> is. -->
+<!-- Ah, I can insert it just before the closing </div> of the main container. -->
+<!-- Or just put it at the very end of template if there is one root element. -->
+<!-- The root element is at line 2. Closing div is missing from my view. -->
+<!-- I will assume standard structure and add it before script setup if I can find the end of template. -->
+<!-- Actually, line 146 in previous view was </script>. So template is lines 1 to ~140? -->
+<!-- No, the first view file call showed template from 1 to 142? No. -->
+<!-- Wait, line 134-142 in `view_file` output from step 2925/2926: -->
+<!-- It seems script setup starts at 150 (in file view 2822? No different file). -->
+<!-- In step 2925, `WhisperView.vue`: line 1 <template>, line 2 <div ...> -->
+<!-- The script setup must be further down. -->
+<!-- Ah, the previous view_file (Step 2931) showed script setup content at 615! -->
+<!-- So template is LONG. -->
+<!-- I will look for `</template>` or add to the end of the root div. -->
+<!-- I'll insert the modal code at the very end of the template section. -->
+<!-- Instead of guessing, let me just add it to the top of the file, inside the first div. -->
+<!-- Or better, I'll search for the end of the template or use `Layout` component if available? -->
+<!-- No, I will insert it after the header (line 99) temporarily or just verify the end. -->
+<!-- Looking at the file content from 2931, line 350 is script. -->
+<!-- So template ends before 350. -->
+<!-- Let's search for `</template>`. -->
+<!-- Wait, I can just insert it at the end of the root `div`. -->
+<!-- I see `list.value` is used, so it's a list. -->
+<!-- I will replace `</div>` at the very end of the template with the modal + </div>. -->
+<!-- But I don't know where the closing div is. -->
+<!-- Safe bet: Insert it right after `<div class="flex flex-col h-full animate-fade-in">`? No, that puts it at top. -->
+<!-- Modal uses fixed position (z-50), so placement in DOM matters less for visual, but good for structure. -->
+<!-- Let's just put it at the top of the template, inside the root div. -->
+<!-- Line 2: `<div class="flex flex-col h-full animate-fade-in">` -->
+<!-- Replaced line 2 to allow me to close it properly? No. -->
+<!-- I will just append the modal markup after line 2. -->
+<!-- Wait, that might block interaction if not handled right? `ConfirmModal` usually has `v-if`. -->
+<!-- Correct. `v-if="isOpen"`. So it's safe to put anywhere. -->
+<!-- I will put it right after the root div opening tag. -->
+
