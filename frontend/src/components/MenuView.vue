@@ -30,7 +30,7 @@
         </div>
         <div class="flex space-x-1">
           <span class="text-xs bg-white text-purple-600 border border-purple-200 px-2 py-1 rounded-full">{{ user.unit }}</span>
-          <span class="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded-full">督導</span>
+          <span class="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded-full">{{ user.role }}</span>
         </div>
       </div>
       <div v-else class="mt-4 flex items-center justify-between bg-primary-50 p-3 rounded-lg text-left">
