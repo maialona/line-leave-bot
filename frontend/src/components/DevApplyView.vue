@@ -233,9 +233,9 @@
           >
           <input
             type="text"
-            :value="user.name"
-            disabled
-            class="w-full bg-gray-100 rounded-lg border-gray-300 py-2 px-3 border text-gray-500"
+            v-model="form.applicant"
+            :placeholder="user.name"
+            class="w-full rounded-lg border-gray-300 py-2 px-3 border"
           />
         </div>
         <div>
@@ -649,59 +649,70 @@
                     <p><span class="font-bold text-gray-800">個案:</span> {{ targetCase?.caseName }}</p>
                 </div>
 
-                <div class="border border-gray-100 rounded-xl overflow-x-auto shadow-sm mb-4">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
-                            <tr>
-                                <th class="p-2 font-normal whitespace-nowrap">月份</th>
-                                <th class="p-2 text-right font-normal whitespace-nowrap">初始</th>
-                                <th class="p-2 text-right font-normal whitespace-nowrap">實用</th>
-                                <th class="p-2 text-right font-normal whitespace-nowrap">獎金</th>
-                                <th v-if="!isReadOnly" class="p-2 w-10 text-center font-normal whitespace-nowrap">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-50">
-                            <tr v-if="noteDetails.length === 0">
-                                <td colspan="5" class="p-8 text-center text-gray-400 text-xs">尚無紀錄，請新增資料</td>
-                            </tr>
-                            <tr v-for="(item, idx) in noteDetails" :key="idx" class="hover:bg-gray-50 transition-colors">
-                                <td class="p-2 text-gray-800 font-medium whitespace-nowrap">{{ item.month }}</td>
-                                <td class="p-2 text-right text-gray-600 whitespace-nowrap">{{ item.initialAmount }}</td>
-                                <td class="p-2 text-right text-gray-600 whitespace-nowrap">{{ item.amount }}</td>
-                                <td class="p-2 text-right font-bold text-green-600 whitespace-nowrap">+{{ Math.round((item.amount - item.initialAmount) * 0.08) }}</td>
-                                <td v-if="!isReadOnly" class="p-2 text-center align-middle">
-                                    <button @click="removeNoteRow(idx)" class="w-7 h-7 inline-flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-colors shadow-sm" title="刪除">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <!-- Records Card List -->
+                <div class="space-y-3 mb-4">
+                    <div v-if="noteDetails.length === 0" class="p-8 text-center text-gray-400 text-xs border border-gray-100 rounded-xl bg-gray-50 border-dashed">
+                        尚無紀錄，請新增資料
+                    </div>
+                    
+                    <div v-for="(item, idx) in noteDetails" :key="idx" class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm relative hover:border-green-200 transition-colors">
+                        <!-- Card Header: Month & Delete Button -->
+                        <div class="flex justify-between items-start mb-3 border-b border-gray-50 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <span class="bg-green-50 text-green-700 px-2 py-1 rounded text-xs font-bold">{{ item.month }}</span>
+                            </div>
+                            <!-- Delete Button (Top Right Absolute/Relative) -->
+                            <button v-if="!isReadOnly" @click="removeNoteRow(idx)" class="w-8 h-8 flex items-center justify-center rounded-full bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-colors" title="刪除">
+                                <svg class="w-4 h-4 mt-[-1px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
+                        
+                        <!-- Card Body: Values -->
+                        <div class="grid grid-cols-2 gap-y-2 text-sm">
+                            <div>
+                                <span class="text-xs text-gray-400 block mb-0.5">初始計畫額度</span>
+                                <span class="font-medium text-gray-700">${{ item.initialAmount }}</span>
+                            </div>
+                            <div>
+                                <span class="text-xs text-gray-400 block mb-0.5">實際使用額度</span>
+                                <span class="font-medium text-gray-700">${{ item.amount }}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Bonus Amount Box -->
+                        <div class="mt-3 bg-green-50/50 rounded-lg p-2.5 flex justify-between items-center border border-green-50">
+                            <span class="text-xs font-bold text-gray-500">此月開發獎金</span>
+                            <span class="font-bold text-green-600 text-base">+{{ Math.round((item.amount - item.initialAmount) * 0.08) }}</span>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Add Form (Supervisor Only) -->
-                <div v-if="!isReadOnly" class="bg-white rounded-xl">
-                    <h4 class="font-bold text-gray-800 mb-4 flex items-center text-sm">
-                        <span class="w-1 h-4 bg-green-500 rounded-full mr-2"></span>新增紀錄
+                <div v-if="!isReadOnly" class="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <h4 class="font-bold text-gray-800 mb-3 flex items-center text-sm">
+                        <span class="w-1 h-3.5 bg-green-500 rounded-full mr-2"></span>新增紀錄
                     </h4>
-                    <div class="grid grid-cols-12 gap-3 mb-3 items-end">
-                        <div class="col-span-4">
-                            <label class="text-xs text-gray-400 block mb-1 ml-1">月份</label>
-                            <select v-model="newNote.month" class="w-full text-sm border-gray-200 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all bg-gray-50 focus:bg-white">
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs text-gray-500 block mb-1">月份</label>
+                            <select v-model="newNote.month" class="w-full text-sm border-gray-200 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all bg-white">
                                 <option v-for="m in monthOptions" :key="m" :value="m">{{ m }}</option>
                             </select>
                         </div>
-                        <div class="col-span-3">
-                            <label class="text-xs text-gray-400 block mb-1 ml-1">初始 ($)</label>
-                            <input v-model="newNote.initialAmount" type="number" class="w-full text-sm border-gray-200 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all bg-gray-50 focus:bg-white" placeholder="0">
+                        <div class="flex space-x-3">
+                            <div class="flex-1">
+                                <label class="text-xs text-gray-500 block mb-1">初始計畫額度 ($)</label>
+                                <input v-model="newNote.initialAmount" type="number" class="w-full text-sm border-gray-200 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all bg-white" placeholder="輸入金額">
+                            </div>
+                            <div class="flex-1">
+                                <label class="text-xs text-gray-500 block mb-1">實際使用額度 ($)</label>
+                                <input v-model="newNote.amount" type="number" class="w-full text-sm border-gray-200 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all bg-white" placeholder="輸入金額">
+                            </div>
                         </div>
-                        <div class="col-span-3">
-                            <label class="text-xs text-gray-400 block mb-1 ml-1">實用 ($)</label>
-                            <input v-model="newNote.amount" type="number" class="w-full text-sm border-gray-200 rounded-lg p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all bg-gray-50 focus:bg-white" placeholder="0">
-                        </div>
-                        <div class="col-span-2">
-                             <button @click="addNoteRow" class="w-full h-[42px] flex items-center justify-center bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm relative top-[1px]">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        <div class="pt-2">
+                             <button @click="addNoteRow" class="w-full py-2.5 flex items-center justify-center space-x-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors shadow-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                <span>加入紀錄</span>
                             </button>
                         </div>
                     </div>
@@ -757,6 +768,7 @@ const isSupervisor = computed(() =>
 );
 
 const form = reactive({
+  applicant: "",
   staffId: "",
   agency: "",
   area: "",
@@ -784,13 +796,15 @@ const submit = async () => {
       body: JSON.stringify({
         ...form,
         uid: user.value.uid,
-        applicant: user.value.name,
+        applicant: form.applicant || user.value.name,
         applyTypes: [form.applyType],
       }),
     });
     if ((await res.json()).success) {
       addToast("申請已送出", "success");
       Object.assign(form, {
+        applicant: user.value.name, // Reset back to default
+        staffId: "",
         agency: "",
         area: "",
         caseName: "",
@@ -1047,6 +1061,12 @@ const openRevokeModal = (c) => {
 };
 
 onMounted(() => {
+  // Initialize form applicant with logged in user's name
+  if (user.value) {
+     if (user.value.name) form.applicant = user.value.name;
+     if (user.value.staffId) form.staffId = user.value.staffId;
+  }
+  
   if (isSupervisor.value) {
     // activeTab.value = 'review';
     fetchCases();

@@ -49,7 +49,8 @@ export async function checkUser(request, env) {
         const userProfiles = sheetData.filter(row => row[3] === uid).map(row => ({
             unit: row[0],
             name: row[1],
-            role: row[2]
+            role: row[2],
+            staffId: row[4]
         }));
 
         // Always return units for binding new

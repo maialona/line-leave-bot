@@ -72,6 +72,7 @@ export const useUserStore = defineStore("user", {
               name: data.profiles[0].name,
               unit: data.profiles[0].unit,
               role: data.profiles[0].role,
+              staffId: data.profiles[0].staffId,
               profiles: data.profiles,
             };
           }
