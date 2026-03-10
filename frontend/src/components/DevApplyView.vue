@@ -649,8 +649,7 @@
                     <p><span class="font-bold text-gray-800">個案:</span> {{ targetCase?.caseName }}</p>
                 </div>
 
-                <!-- Table -->
-                <div class="border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+                <div class="border border-gray-100 rounded-xl overflow-x-auto shadow-sm mb-4">
                     <table class="w-full text-sm text-left">
                         <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
                             <tr>
@@ -658,7 +657,7 @@
                                 <th class="p-3 text-right font-normal whitespace-nowrap">初始計畫額度</th>
                                 <th class="p-3 text-right font-normal whitespace-nowrap">實際使用額度</th>
                                 <th class="p-3 text-right font-normal whitespace-nowrap">開發獎金</th>
-                                <th v-if="!isReadOnly" class="p-3 w-8"></th>
+                                <th v-if="!isReadOnly" class="p-3 w-10 text-center font-normal whitespace-nowrap">操作</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
@@ -670,8 +669,10 @@
                                 <td class="p-3 text-right text-gray-600 whitespace-nowrap">{{ item.initialAmount }}</td>
                                 <td class="p-3 text-right text-gray-600 whitespace-nowrap">{{ item.amount }}</td>
                                 <td class="p-3 text-right font-bold text-green-600 whitespace-nowrap">+{{ Math.round((item.amount - item.initialAmount) * 0.08) }}</td>
-                                <td v-if="!isReadOnly" class="p-3 text-center">
-                                    <button @click="removeNoteRow(idx)" class="w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">×</button>
+                                <td v-if="!isReadOnly" class="p-3 text-center align-middle">
+                                    <button @click="removeNoteRow(idx)" class="w-8 h-8 inline-flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-colors shadow-sm" title="刪除">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
                                 </td>
                             </tr>
                         </tbody>
