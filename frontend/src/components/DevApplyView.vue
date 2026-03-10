@@ -653,11 +653,11 @@
                     <table class="w-full text-sm text-left">
                         <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
                             <tr>
-                                <th class="p-3 font-normal whitespace-nowrap">月份</th>
-                                <th class="p-3 text-right font-normal whitespace-nowrap">初始計畫額度</th>
-                                <th class="p-3 text-right font-normal whitespace-nowrap">實際使用額度</th>
-                                <th class="p-3 text-right font-normal whitespace-nowrap">開發獎金</th>
-                                <th v-if="!isReadOnly" class="p-3 w-10 text-center font-normal whitespace-nowrap">操作</th>
+                                <th class="p-2 font-normal whitespace-nowrap">月份</th>
+                                <th class="p-2 text-right font-normal whitespace-nowrap">初始</th>
+                                <th class="p-2 text-right font-normal whitespace-nowrap">實用</th>
+                                <th class="p-2 text-right font-normal whitespace-nowrap">獎金</th>
+                                <th v-if="!isReadOnly" class="p-2 w-10 text-center font-normal whitespace-nowrap">操作</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
@@ -665,12 +665,12 @@
                                 <td colspan="5" class="p-8 text-center text-gray-400 text-xs">尚無紀錄，請新增資料</td>
                             </tr>
                             <tr v-for="(item, idx) in noteDetails" :key="idx" class="hover:bg-gray-50 transition-colors">
-                                <td class="p-3 text-gray-800 font-medium whitespace-nowrap">{{ item.month }}</td>
-                                <td class="p-3 text-right text-gray-600 whitespace-nowrap">{{ item.initialAmount }}</td>
-                                <td class="p-3 text-right text-gray-600 whitespace-nowrap">{{ item.amount }}</td>
-                                <td class="p-3 text-right font-bold text-green-600 whitespace-nowrap">+{{ Math.round((item.amount - item.initialAmount) * 0.08) }}</td>
-                                <td v-if="!isReadOnly" class="p-3 text-center align-middle">
-                                    <button @click="removeNoteRow(idx)" class="w-8 h-8 inline-flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-colors shadow-sm" title="刪除">
+                                <td class="p-2 text-gray-800 font-medium whitespace-nowrap">{{ item.month }}</td>
+                                <td class="p-2 text-right text-gray-600 whitespace-nowrap">{{ item.initialAmount }}</td>
+                                <td class="p-2 text-right text-gray-600 whitespace-nowrap">{{ item.amount }}</td>
+                                <td class="p-2 text-right font-bold text-green-600 whitespace-nowrap">+{{ Math.round((item.amount - item.initialAmount) * 0.08) }}</td>
+                                <td v-if="!isReadOnly" class="p-2 text-center align-middle">
+                                    <button @click="removeNoteRow(idx)" class="w-7 h-7 inline-flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-colors shadow-sm" title="刪除">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                     </button>
                                 </td>
@@ -708,16 +708,18 @@
                 </div>
             </div>
             
-            <div class="p-4 border-t flex space-x-3 shrink-0">
-                <button @click="showNoteModal = false" class="flex-1 py-3 rounded-xl text-gray-500 font-medium hover:bg-gray-50 transition-colors">
+            <div class="p-3 border-t flex space-x-2 shrink-0">
+                <button @click="showNoteModal = false" class="flex-1 py-2 px-1 rounded-xl text-gray-500 font-medium hover:bg-gray-50 transition-colors whitespace-nowrap text-sm">
                     {{ isReadOnly ? '關閉' : '取消' }}
                 </button>
                 <template v-if="!isReadOnly">
-                    <button @click="saveNote('accept')" class="flex-1 py-3 rounded-xl bg-white border border-yellow-400 text-yellow-600 font-bold hover:bg-yellow-50 transition-colors">
-                        暫存 (受理中)
+                    <button @click="saveNote('accept')" class="flex-1 py-2 px-1 rounded-xl bg-white border border-yellow-400 text-yellow-600 font-bold hover:bg-yellow-50 transition-colors whitespace-nowrap flex flex-col items-center justify-center">
+                        <span class="block text-sm">暫存</span>
+                        <span class="block text-[10px] font-normal leading-tight">(受理中)</span>
                     </button>
-                    <button @click="saveNote('approve')" class="flex-1 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all">
-                        結算 (已核准)
+                    <button @click="saveNote('approve')" class="flex-1 py-2 px-1 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 transition-all whitespace-nowrap flex flex-col items-center justify-center">
+                        <span class="block text-sm">結算</span>
+                        <span class="block text-[10px] font-normal leading-tight opacity-90">(已核准)</span>
                     </button>
                 </template>
             </div>
