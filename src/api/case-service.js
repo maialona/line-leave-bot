@@ -166,10 +166,14 @@ export async function reviewCase(request, env) {
              reviewTime: ['Review Time', '審核時間'],
              firstServiceDate: ['First Service Date', '首次服務日'],
              rejectReason: ['Reject Reason', '駁回原因'],
-             devDetails: ['Dev Details', '開發明細']
+             devDetails: ['Dev Details', '開發明細'],
+             caseName: ['Case Name', '個案姓名'],
+             applicant: ['Applicant', '申請人']
         };
         const colMap = mapHeadersToIndexes(header, schema);
         if (colMap.timestamp === -1) colMap.timestamp = 0;
+        if (colMap.applicant === -1) colMap.applicant = 2;
+        if (colMap.caseName === -1) colMap.caseName = 5;
         if (colMap.status === -1) colMap.status = 10;
         if (colMap.reviewer === -1) colMap.reviewer = 11;
         if (colMap.reviewTime === -1) colMap.reviewTime = 12;
@@ -235,6 +239,17 @@ export async function reviewCase(request, env) {
                  }
                  if (devDetails) {
                     await updateSheetCell(env.SHEET_ID, `Case_Applications!${devDetailsCol}${rowIndex}`, JSON.stringify(devDetails), token);
+                 }
+            }
+
+            // Sync Dev Note Records explicitly for visual analytics
+            if (devDetails) {
+                 try {
+                     const applicant = rows[rowIndex-1][colMap.applicant] || '';
+                     const caseName = rows[rowIndex-1][colMap.caseName] || '';
+                     await syncDevNoteRecords(env, token, timestamp, applicant, caseName, devDetails);
+                 } catch (err) {
+                     console.error('Failed to sync Dev Note Records:', err);
                  }
             }
 
@@ -588,5 +603,62 @@ export async function revokeCase(request, env) {
         return { success: false, message: 'Case not found' };
     } catch (e) {
         throw e;
+    }
+}
+
+/**
+ * Synchronizes devDetails to a separate relational Google Sheet tab (Option 1)
+ */
+async function syncDevNoteRecords(env, token, caseTimestamp, applicant, caseName, devDetails) {
+    const sheetName = 'Dev_Note_Records';
+    
+    // 1. Fetch existing records
+    let existingRecords = [];
+    try {
+        existingRecords = await getSheetData(env.SHEET_ID, `${sheetName}!A2:G`, token);
+    } catch (e) {
+        // Sheet might not exist or empty
+        if (e.message && (e.message.includes('NOT_FOUND') || e.message.includes('parse'))) {
+             console.warn(`Sheet ${sheetName} not properly setup. Skipping sync.`);
+             return; 
+        }
+        throw e;
+    }
+
+    // 2. Filter out records for THIS case
+    const filteredRecords = existingRecords.filter(row => row[0] !== caseTimestamp);
+
+    // 3. Append new records for THIS case
+    const newRecords = devDetails.map(item => [
+        caseTimestamp,
+        applicant,
+        caseName,
+        item.month || '',
+        item.initialAmount || 0,
+        item.amount || 0,
+        Math.round(((parseFloat(item.amount) || 0) - (parseFloat(item.initialAmount) || 0)) * 0.08)
+    ]);
+    
+    filteredRecords.push(...newRecords);
+
+    // 4. Update the sheet
+    // Clear existing data (A2:G)
+    try {
+        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${env.SHEET_ID}/values/${encodeURIComponent(sheetName + '!A2:G')}:clear`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` }
+        });
+    } catch (e) {
+        console.error('Failed to clear Dev_Note_Records', e);
+    }
+    
+    // Write the new consolidated array back
+    if (filteredRecords.length > 0) {
+        const putUrl = `https://sheets.googleapis.com/v4/spreadsheets/${env.SHEET_ID}/values/${encodeURIComponent(sheetName + '!A2')}?valueInputOption=USER_ENTERED`;
+        await fetch(putUrl, {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ values: filteredRecords })
+        });
     }
 }
