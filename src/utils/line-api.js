@@ -10,19 +10,31 @@ export async function sendApprovalNotification(data, proofUrl, timestamp, env, t
     const firstSheetName = metaData.sheets[0].properties.title;
 
     const staffRows = await getSheetData(env.SHEET_ID, `${firstSheetName}!A2:F`, token);
-    const applicant = staffRows.find(r => r[3] === data.uid);
+    const applicant = staffRows.find(r => String(r[3] || '').trim() === String(data.uid || '').trim());
 
-    if (!applicant) return;
-    const unit = applicant[0];
+    if (!applicant) {
+        console.warn(`sendApprovalNotification: 找不到申請人 UID=${data.uid}，請確認員工資料表`);
+        return;
+    }
+    const unit = String(applicant[0] || '').trim();
 
-    // 2. Find Supervisors in SAME Unit
-    // 2. Find Supervisors in SAME Unit
-    // Updated: Include Business Manager
+    // 2. Find Supervisors in SAME Unit (Including Business Manager)
+    const LINE_UID_PATTERN = /^U[0-9a-f]{32}$/i;
     const supervisors = staffRows
-        .filter(row => row[0] === unit && ['Supervisor', '督導', 'Business Manager', '業務負責人'].includes(row[2]) && row[3])
-        .map(row => row[3]);
+        .filter(row => {
+            const rowUnit = String(row[0] || '').trim().toLowerCase();
+            const rowRole = String(row[2] || '').trim();
+            const rowUid = String(row[3] || '').trim();
+            return rowUnit === unit.toLowerCase() &&
+                ['Supervisor', '督導', 'Business Manager', '業務負責人'].includes(rowRole) &&
+                LINE_UID_PATTERN.test(rowUid);
+        })
+        .map(row => String(row[3]).trim());
 
-    if (supervisors.length === 0) return;
+    if (supervisors.length === 0) {
+        console.warn(`sendApprovalNotification: 單位「${unit}」找不到有效 LINE UID 的督導，請確認員工資料表 D 欄`);
+        return;
+    }
 
     // Build Body Contents
     // Build Detail Contents
@@ -417,19 +429,30 @@ export async function sendCaseApprovalNotification(data, env, token) {
     const firstSheetName = metaData.sheets[0].properties.title;
 
     const staffRows = await getSheetData(env.SHEET_ID, `${firstSheetName}!A2:F`, token);
-    const applicant = staffRows.find(r => r[3] === data.uid);
+    const applicant = staffRows.find(r => String(r[3] || '').trim() === String(data.uid || '').trim());
 
-    if (!applicant) return;
-    const unit = applicant[0];
+    if (!applicant) {
+        console.warn(`sendCaseApprovalNotification: 找不到申請人 UID=${data.uid}`);
+        return;
+    }
+    const unit = String(applicant[0] || '').trim();
 
     // 2. Find Supervisors & Business Managers in SAME Unit
-    // Role is at index 2. Check for 'Supervisor', '督導', 'Business Manager', '業務負責人'
+    const LINE_UID_PATTERN = /^U[0-9a-f]{32}$/i;
     const targetRoles = ['Supervisor', '督導', 'Business Manager', '業務負責人'];
     const reviewers = staffRows
-        .filter(row => row[0] === unit && targetRoles.includes(row[2]) && row[3])
-        .map(row => row[3]);
+        .filter(row => {
+            const rowUnit = String(row[0] || '').trim().toLowerCase();
+            const rowRole = String(row[2] || '').trim();
+            const rowUid = String(row[3] || '').trim();
+            return rowUnit === unit.toLowerCase() && targetRoles.includes(rowRole) && LINE_UID_PATTERN.test(rowUid);
+        })
+        .map(row => String(row[3]).trim());
 
-    if (reviewers.length === 0) return;
+    if (reviewers.length === 0) {
+        console.warn(`sendCaseApprovalNotification: 單位「${unit}」找不到有效 LINE UID 的督導`);
+        return;
+    }
 
     // 3. Build Flex Message
     const typesStr = data.applyTypes.join(', ');

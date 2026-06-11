@@ -74,25 +74,23 @@ export async function submitLeave(request, env, ctx) {
             }
         });
 
+        if (rowsToAdd.length === 0) {
+            throw new Error('請假資料為空，請確認請假日期是否正確');
+        }
+
         await appendSheetRows(env.SHEET_ID, 'Leave_Records!A:A', rowsToAdd, token);
         console.log("Leave recorded:", timestamp, "Count:", rowsToAdd.length);
 
-        // Send Notification (Single Notification for Batch)
-        // Modify form to represent the batch for notification
         const notifyData = { ...form, date: dates.join(', ') + (dates.length > 1 ? ` (共${dates.length}天)` : '') };
-        
-        if (ctx && typeof ctx.waitUntil === 'function') {
-            ctx.waitUntil(sendApprovalNotification(notifyData, proofUrl, timestamp, env, token).catch(e => console.error("Async Notify Error:", e)));
-        } else {
-            // Fallback
-             try {
-                await sendApprovalNotification(form, proofUrl, timestamp, env, token);
-            } catch (notifyError) {
-                console.error("Failed to send notification:", notifyError);
-            }
+        let notifyWarning = null;
+        try {
+            await sendApprovalNotification(notifyData, proofUrl, timestamp, env, token);
+        } catch (notifyError) {
+            console.error("Notification failed:", notifyError.message);
+            notifyWarning = '假單已記錄，但通知督導時發生錯誤，請手動告知督導審核。';
         }
 
-        return { success: true };
+        return { success: true, ...(notifyWarning ? { notifyWarning } : {}) };
     } catch (e) {
         throw e;
     }
@@ -196,7 +194,7 @@ export async function getLeaves(request, env) {
             let isMatch = false;
             
             if (isSupervisor) {
-                if (rowUnit === targetUnit && targetUnit) isMatch = true;
+                if (rowUnit.toLowerCase() === targetUnit.toLowerCase() && targetUnit) isMatch = true;
             }
             
             if (rowUid.toLowerCase() === targetUid.toLowerCase()) isMatch = true;
